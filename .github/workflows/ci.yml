@@ -1,0 +1,139 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Lint backend
+        run: npm run lint:backend
+      
+      - name: Lint frontend
+        run: npm run lint:frontend
+      
+      - name: Type check backend
+        run: npm run type-check:backend
+      
+      - name: Type check frontend
+        run: npm run type-check:frontend
+
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: walkingaudit_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run backend tests
+        run: npm run test:backend
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/walkingaudit_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret
+          JWT_REFRESH_SECRET: test-refresh-secret
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run frontend tests
+        run: npm run test:frontend
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck, test-backend, test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build backend
+        run: npm run build:backend
+      
+      - name: Build frontend
+        run: npm run build:frontend
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            backend/dist
+            frontend/.next
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to staging
+        run: echo "Deploy to staging environment"
+        # TODO: Add actual deployment steps
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to production
+        run: echo "Deploy to production environment"
+        # TODO: Add actual deployment steps
+

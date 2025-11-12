@@ -1,0 +1,91 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+
+# Production
+build/
+dist/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Prisma
+# Keep migration files but ignore generated artifacts
+# Migration SQL files are tracked
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Build artifacts
+*.tsbuildinfo
+.eslintcache
+
+# Service account keys
+*-service-account.json
+service-account-key.json
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.backup
+*.bak
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Monitoring
+.sentryclirc
+
+# Misc
+.prettierignore
+.eslintignore
+
