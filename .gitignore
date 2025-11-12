@@ -79,7 +79,7 @@ service-account-key.json
 *.bak
 
 # Docker
-.dockerignore
+# Keep .dockerignore files (they're part of the project)
 docker-compose.override.yml
 
 # Monitoring
