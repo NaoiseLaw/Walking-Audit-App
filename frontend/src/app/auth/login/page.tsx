@@ -13,6 +13,7 @@ interface LoginResponse {
     email: string;
     name: string;
     role: string;
+    emailVerified: boolean;
   };
   tokens: {
     accessToken: string;
