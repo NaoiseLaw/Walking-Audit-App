@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiClient.post('/v1/auth/forgot-password', {
+      const response = await apiClient.post<{ message?: string }>('/v1/auth/forgot-password', {
         email,
       });
 
@@ -85,4 +85,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-

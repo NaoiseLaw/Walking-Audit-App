@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setCurrentStep, updateSection, setRouteId, setAuditDate } from '@/store/slices/auditSlice';
 import { apiClient } from '@/lib/api';
@@ -11,6 +11,14 @@ interface Route {
   name: string;
   townCity: string;
   county: string;
+}
+
+interface Audit {
+  id: string;
+  routeId: string;
+  auditDate: string;
+  sections: any[];
+  status: string;
 }
 
 const SECTIONS = [
@@ -108,7 +116,7 @@ export default function AuditWizard() {
         problemAreas: section.problemAreas,
       }));
 
-      const audit = await apiClient.post('/v1/audits', {
+      const audit = await apiClient.post<Audit>('/v1/audits', {
         routeId,
         auditDate,
         sections: sectionsData,
@@ -329,4 +337,3 @@ export default function AuditWizard() {
     </div>
   );
 }
-
