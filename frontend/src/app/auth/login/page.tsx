@@ -7,6 +7,19 @@ import { setCredentials } from '@/store/slices/authSlice';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
 
+interface LoginResponse {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+  };
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+  };
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -21,7 +34,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiClient.post('/v1/auth/login', {
+      const response = await apiClient.post<LoginResponse>('/v1/auth/login', {
         email,
         password,
       });
@@ -154,4 +167,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
