@@ -19,12 +19,6 @@ async function startServer() {
     await connectRedis();
     logger.info('✅ Redis connected');
     
-    // Start background job scheduler
-    if (process.env.NODE_ENV !== 'test') {
-      startScheduler();
-      logger.info('✅ Background job scheduler started');
-    }
-    
     // Start server
     const server = app.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT} in ${NODE_ENV} mode`);
