@@ -5,20 +5,23 @@ import { ApiError } from '../middleware/error.middleware';
 import sharp from 'sharp';
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert(
-        process.env.FIREBASE_SERVICE_ACCOUNT
-          ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-          : require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json')
-      ),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    });
-  } catch (error) {
-    logger.warn('Firebase Admin not initialized. Photo uploads will fail.');
+function getFirebaseBucket() {
+  if (!admin.apps.length) {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert(
+          process.env.FIREBASE_SERVICE_ACCOUNT
+            ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+            : require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json')
+        ),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      });
+    } catch (error) {
+      logger.warn('Firebase Admin not initialized. Photo uploads will fail.');
+      return null;
+    }
   }
+  return admin.storage().bucket();
 }
 
 interface UploadPhotoData {
@@ -36,7 +39,6 @@ interface UploadPhotoData {
 }
 
 export class PhotoService {
-  private bucket = admin.storage().bucket();
 
   /**
    * Upload and process photo
@@ -298,6 +300,7 @@ export class PhotoService {
       buffer: processed,
       width,
       height,
+      length: processed.length,
     };
   }
 
@@ -318,7 +321,9 @@ export class PhotoService {
    * Upload to Firebase Storage
    */
   private async uploadToStorage(buffer: Buffer, path: string): Promise<string> {
-    const file = this.bucket.file(path);
+    const bucket = getFirebaseBucket();
+    if (!bucket) throw new ApiError('Firebase Storage not configured', 503);
+    const file = bucket.file(path);
     await file.save(buffer, {
       metadata: {
         contentType: 'image/jpeg',
@@ -333,10 +338,11 @@ export class PhotoService {
    * Delete from Firebase Storage
    */
   private async deleteFromStorage(url: string): Promise<void> {
-    // Extract path from URL
+    const bucket = getFirebaseBucket();
+    if (!bucket) return;
     const path = url.split('/o/')[1]?.split('?')[0];
     if (path) {
-      const file = this.bucket.file(decodeURIComponent(path));
+      const file = bucket.file(decodeURIComponent(path));
       await file.delete();
     }
   }

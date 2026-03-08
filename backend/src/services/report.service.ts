@@ -2,8 +2,26 @@ import { prisma } from '../config/database.config';
 import { redis } from '../config/redis.config';
 import { logger } from '../utils/logger.util';
 import { ApiError } from '../middleware/error.middleware';
-import puppeteer from 'puppeteer';
 import * as admin from 'firebase-admin';
+
+function getFirebaseAdminBucket() {
+  if (!admin.apps.length) {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert(
+          process.env.FIREBASE_SERVICE_ACCOUNT
+            ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+            : require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json')
+        ),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      });
+    } catch (error) {
+      logger.warn('Firebase Admin not initialized. Report uploads will fail.');
+      return null;
+    }
+  }
+  return admin.storage().bucket();
+}
 
 export class ReportService {
   /**
@@ -196,7 +214,8 @@ export class ReportService {
    * Generate PDF from HTML
    */
   private async generatePDF(html: string): Promise<Buffer> {
-    const browser = await puppeteer.launch({
+    const puppeteer = await import('puppeteer');
+    const browser = await puppeteer.default.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
@@ -224,7 +243,8 @@ export class ReportService {
    */
   private async uploadReport(pdfBuffer: Buffer, auditId: string): Promise<string> {
     try {
-      const bucket = admin.storage().bucket();
+      const bucket = getFirebaseAdminBucket();
+      if (!bucket) throw new ApiError('Firebase Storage not configured', 503);
       const fileName = `reports/${auditId}/${Date.now()}-report.pdf`;
       const file = bucket.file(fileName);
 
@@ -237,6 +257,7 @@ export class ReportService {
 
       return file.publicUrl();
     } catch (error) {
+      if (error instanceof ApiError) throw error;
       logger.error(`Failed to upload report: ${error}`);
       throw new ApiError('Failed to upload report', 500);
     }

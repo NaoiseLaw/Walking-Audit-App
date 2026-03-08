@@ -1,11 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger.util';
 
-export interface ApiError extends Error {
-  status?: number;
-  statusCode?: number;
+export class ApiError extends Error {
+  status: number;
+  statusCode: number;
   code?: string;
   errors?: Array<{ field: string; message: string; code?: string }>;
+
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code?: string,
+    errors?: Array<{ field: string; message: string; code?: string }>
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = statusCode;
+    this.statusCode = statusCode;
+    this.code = code;
+    this.errors = errors;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
 }
 
 export function errorHandler(
