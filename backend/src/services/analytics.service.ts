@@ -196,7 +196,7 @@ export class AnalyticsService {
       take: limit,
     });
 
-    const topIssues = issues.map((issue) => ({
+    const topIssues = issues.map((issue: any) => ({
       category: issue.category,
       count: issue._count.id,
     }));
@@ -228,7 +228,7 @@ export class AnalyticsService {
     });
 
     const breakdown = await Promise.all(
-      counties.map(async (county) => {
+      counties.map(async (county: any) => {
         const audits = await prisma.audit.aggregate({
           where: {
             deletedAt: null,
@@ -340,7 +340,7 @@ export class AnalyticsService {
     // Group by month
     const byMonth: Record<string, { count: number; avgScore: number; totalScore: number }> = {};
 
-    audits.forEach((audit) => {
+    audits.forEach((audit: any) => {
       const month = audit.auditDate.toISOString().slice(0, 7); // YYYY-MM
       if (!byMonth[month]) {
         byMonth[month] = { count: 0, avgScore: 0, totalScore: 0 };
