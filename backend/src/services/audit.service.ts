@@ -82,7 +82,7 @@ export class AuditService {
     }
 
     // Create audit in transaction
-    const audit = await prisma.$transaction(async (tx) => {
+    const audit = await prisma.$transaction(async (tx: any) => {
       // Create audit
       const newAudit = await tx.audit.create({
         data: {
@@ -366,8 +366,9 @@ export class AuditService {
     }
 
     // Update audit
-    const updatedAudit = await prisma.$transaction(async (tx) => {
-      const audit = await tx.audit.update({
+    const updatedAudit = await prisma.$transaction(async (tx: any) => {
+      const existingAudit = await tx.audit.findUnique({ where: { id: auditId } });
+      const updatedRecord = await tx.audit.update({
         where: { id: auditId },
         data: {
           auditDate: data.auditDate ? new Date(data.auditDate) : undefined,
@@ -386,7 +387,7 @@ export class AuditService {
           dislikedMost: data.dislikedMost,
           additionalComments: data.additionalComments,
           status: data.status as any,
-          completedAt: data.status === 'completed' ? new Date() : audit.completedAt,
+          completedAt: data.status === 'completed' ? new Date() : existingAudit?.completedAt,
           version: {
             increment: 1,
           },
@@ -415,7 +416,7 @@ export class AuditService {
         }
       }
 
-      return audit;
+      return updatedRecord;
     });
 
     // Recalculate scores
@@ -423,7 +424,7 @@ export class AuditService {
 
     // Invalidate cache
     await redis.del(`audit:${auditId}`);
-    await redis.del(`route:${audit.routeId}:audits`);
+    await redis.del(`route:${updatedAudit.routeId}:audits`);
 
     logger.info(`Audit updated: ${auditId} by user ${userId}`);
 
@@ -487,13 +488,14 @@ export class AuditService {
     }
 
     // Calculate section scores
-    const footpathsScore = audit.sections.find((s) => s.section === 'footpaths')?.score;
-    const facilitiesScore = audit.sections.find((s) => s.section === 'facilities')?.score;
-    const crossingsScore = audit.sections.find((s) => s.section === 'crossing_road')?.score;
-    const behaviourScore = audit.sections.find((s) => s.section === 'road_user_behaviour')?.score;
-    const safetyScore = audit.sections.find((s) => s.section === 'safety')?.score;
-    const lookFeelScore = audit.sections.find((s) => s.section === 'look_and_feel')?.score;
-    const schoolGatesScore = audit.sections.find((s) => s.section === 'school_gates')?.score;
+    const sections = audit.sections as any[];
+    const footpathsScore = sections.find((s) => s.section === 'footpaths')?.score;
+    const facilitiesScore = sections.find((s) => s.section === 'facilities')?.score;
+    const crossingsScore = sections.find((s) => s.section === 'crossing_road')?.score;
+    const behaviourScore = sections.find((s) => s.section === 'road_user_behaviour')?.score;
+    const safetyScore = sections.find((s) => s.section === 'safety')?.score;
+    const lookFeelScore = sections.find((s) => s.section === 'look_and_feel')?.score;
+    const schoolGatesScore = sections.find((s) => s.section === 'school_gates')?.score;
 
     // Calculate total score
     const scores = [

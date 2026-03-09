@@ -7,8 +7,8 @@ import { ApiError } from '../middleware/error.middleware';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h';
-const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '30d';
+const JWT_EXPIRY = (process.env.JWT_EXPIRY || '24h') as any;
+const JWT_REFRESH_EXPIRY = (process.env.JWT_REFRESH_EXPIRY || '30d') as any;
 
 interface RegisterData {
   email: string;

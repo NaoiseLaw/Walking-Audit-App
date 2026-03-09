@@ -48,5 +48,4 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-export { logger };
 
