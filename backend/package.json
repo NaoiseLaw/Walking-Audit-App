@@ -45,13 +45,12 @@
     "sharp": "^0.33.2",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "bull": "^4.11.0",
+    "puppeteer": "^21.6.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
-    "bull": "^4.11.0",
-    "puppeteer": "^21.6.1",
-    "redis": "^4.6.11",
     "supertest": "^6.3.4",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",

@@ -108,7 +108,6 @@ model User {
   audits                  Audit[]                    @relation("AuditCoordinator")
   reviewedAudits          Audit[]                    @relation("AuditReviewer")
   uploadedPhotos          Photo[]
-  reportedIssues          Issue[]
   respondedIssues         Issue[]                    @relation("IssueResponder")
   resolvedIssues          Issue[]                    @relation("IssueResolver")
   verifiedIssues          Issue[]                    @relation("IssueVerifier")
@@ -116,12 +115,13 @@ model User {
   implementedRecommendations Recommendation[]        @relation("RecommendationImplementer")
   verifiedRecommendations Recommendation[]           @relation("RecommendationVerifier")
   auditLogs               AuditLog[]
+  auditParticipants       AuditParticipant[]
   syncQueue               SyncQueue[]
 
-  @@index([email], where: { deletedAt: null })
-  @@index([role], where: { deletedAt: null })
-  @@index([organization], where: { deletedAt: null })
-  @@index([county], where: { deletedAt: null })
+  @@index([email])
+  @@index([role])
+  @@index([organization])
+  @@index([county])
   @@index([createdAt(sort: Desc)])
   @@map("users")
 }
@@ -169,13 +169,13 @@ model Route {
   audits                Audit[]
   baselineData          BaselineData[]
 
-  @@index([county], where: { deletedAt: null })
-  @@index([townCity], where: { deletedAt: null })
+  @@index([county])
+  @@index([townCity])
   @@index([createdBy])
   @@index([createdAt(sort: Desc)])
-  @@index([lastAudited(sort: Desc)], where: { lastAudited: { not: null } })
-  @@index([isPublic], where: { isPublic: true })
-  @@index([isFeatured], where: { isFeatured: true })
+  @@index([lastAudited(sort: Desc)])
+  @@index([isPublic])
+  @@index([isFeatured])
   @@map("routes")
 }
 
@@ -188,8 +188,8 @@ model Audit {
   routeId             String      @map("route_id")
   coordinatorId       String      @map("coordinator_id")
   auditDate           DateTime    @map("audit_date") @db.Date
-  startTime           String?     @map("start_time") @db.Time
-  endTime             String?     @map("end_time") @db.Time
+  startTime           DateTime?     @map("start_time") @db.Time
+  endTime             DateTime?     @map("end_time") @db.Time
   durationMinutes     Int?        @map("duration_minutes")
   weather             String?
   temperatureCelsius  Int?        @map("temperature_celsius")
@@ -237,16 +237,15 @@ model Audit {
   reportMetrics       ReportMetrics?
   baselineData        BaselineData[]
   auditLogs           AuditLog[]
-  syncQueue           SyncQueue[]
 
-  @@index([routeId], where: { deletedAt: null })
+  @@index([routeId])
   @@index([coordinatorId])
-  @@index([status], where: { deletedAt: null })
+  @@index([status])
   @@index([auditDate(sort: Desc)])
-  @@index([completedAt(sort: Desc)], where: { completedAt: { not: null } })
+  @@index([completedAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
-  @@index([walkabilityRating], where: { walkabilityRating: { not: null } })
-  @@index([isSchoolRoute], where: { isSchoolRoute: true })
+  @@index([walkabilityRating])
+  @@index([isSchoolRoute])
   @@index([routeId, auditDate(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@map("audits")
@@ -272,7 +271,7 @@ model AuditParticipant {
 
   @@unique([auditId, userId])
   @@index([auditId])
-  @@index([userId], where: { userId: { not: null } })
+  @@index([userId])
   @@index([ageGroup])
   @@map("audit_participants")
 }
@@ -356,14 +355,14 @@ model Issue {
   verifier            User?         @relation("IssueVerifier", fields: [verifiedBy], references: [id])
   photos              Photo[]
 
-  @@index([auditId], where: { deletedAt: null })
+  @@index([auditId])
   @@index([section])
   @@index([category])
   @@index([severity])
-  @@index([laStatus], where: { deletedAt: null })
+  @@index([laStatus])
   @@index([createdAt(sort: Desc)])
-  @@index([resolvedAt], where: { resolvedAt: { not: null } })
-  @@index([severity, laStatus], where: { deletedAt: null })
+  @@index([resolvedAt])
+  @@index([severity, laStatus])
   @@index([auditId, severity])
   @@map("issues")
 }
@@ -406,11 +405,11 @@ model Photo {
   audit               Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
   uploader            User?    @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
 
-  @@index([issueId], where: { deletedAt: null })
-  @@index([auditId], where: { deletedAt: null })
+  @@index([issueId])
+  @@index([auditId])
   @@index([uploadedAt(sort: Desc)])
-  @@index([uploadedBy], where: { uploadedBy: { not: null } })
-  @@index([takenAt], where: { takenAt: { not: null } })
+  @@index([uploadedBy])
+  @@index([takenAt])
   @@map("photos")
 }
 
@@ -455,11 +454,11 @@ model Recommendation {
   implementer           User?    @relation("RecommendationImplementer", fields: [implementedBy], references: [id])
   verifier              User?    @relation("RecommendationVerifier", fields: [verifiedBy], references: [id])
 
-  @@index([auditId], where: { deletedAt: null })
-  @@index([laStatus], where: { deletedAt: null })
+  @@index([auditId])
+  @@index([laStatus])
   @@index([priority])
   @@index([category])
-  @@index([implemented], where: { implemented: true })
+  @@index([implemented])
   @@index([createdAt(sort: Desc)])
   @@index([auditId, priority])
   @@index([laStatus, createdAt(sort: Desc)])
@@ -498,7 +497,7 @@ model BaselineData {
   railStationsWithin800m  Int?     @map("rail_stations_within_800m")
   bikeShareStationsWithin500m Int? @map("bike_share_stations_within_500m")
   pedestrianFlowCount     Int?     @map("pedestrian_flow_count")
-  pedestrianFlowPeakTime  String?  @map("pedestrian_flow_peak_time") @db.Time
+  pedestrianFlowPeakTime  DateTime?  @map("pedestrian_flow_peak_time") @db.Time
   dataSource              String   @map("data_source")
   dataVersion             String?  @map("data_version")
   dataDate                DateTime @map("data_date") @db.Date
@@ -513,7 +512,7 @@ model BaselineData {
   audit                   Audit?   @relation(fields: [auditId], references: [id], onDelete: Cascade)
 
   @@index([routeId])
-  @@index([auditId], where: { auditId: { not: null } })
+  @@index([auditId])
   @@index([dataDate(sort: Desc)])
   @@index([dataSource])
   @@map("baseline_data")
@@ -580,7 +579,7 @@ model ReportMetrics {
 
   @@index([auditId])
   @@index([generatedAt(sort: Desc)])
-  @@index([needsRegeneration], where: { needsRegeneration: true })
+  @@index([needsRegeneration])
   @@map("report_metrics")
 }
 
@@ -610,12 +609,12 @@ model AuditLog {
   audit         Audit?   @relation(fields: [auditId], references: [id], onDelete: SetNull)
   user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([auditId], where: { auditId: { not: null } })
-  @@index([userId], where: { userId: { not: null } })
+  @@index([auditId])
+  @@index([userId])
   @@index([action])
   @@index([entityType, entityId])
   @@index([createdAt(sort: Desc)])
-  @@index([ipAddress], where: { ipAddress: { not: null } })
+  @@index([ipAddress])
   @@map("audit_log")
 }
 
@@ -646,11 +645,11 @@ model SyncQueue {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([status], where: { status: { in: ["pending", "failed"] } })
+  @@index([status])
   @@index([priority, createdAt])
   @@index([entityType, entityId])
   @@index([createdAt])
-  @@index([status, priority(sort: Desc), createdAt], where: { status: "pending" })
+  @@index([status, priority(sort: Desc), createdAt])
   @@map("sync_queue")
 }
 
@@ -682,13 +681,13 @@ model EmailQueue {
   sendAfter           DateTime? @map("send_after")
   createdAt           DateTime @default(now()) @map("created_at")
 
-  @@index([status], where: { status: { in: ["pending", "failed"] } })
+  @@index([status])
   @@index([createdAt])
-  @@index([sendAfter], where: { sendAfter: { not: null }, status: "pending" })
-  @@index([priority, createdAt], where: { status: "pending" })
+  @@index([sendAfter])
+  @@index([priority, createdAt])
   @@index([emailType])
   @@index([recipientEmail])
-  @@index([status, priority(sort: Desc), sendAfter, createdAt], where: { status: "pending" })
+  @@index([status, priority(sort: Desc), sendAfter, createdAt])
   @@map("email_queue")
 }
 
