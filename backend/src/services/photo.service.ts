@@ -2,8 +2,21 @@ import { prisma } from '../config/database.config';
 import { redis } from '../config/redis.config';
 import { logger } from '../utils/logger.util';
 import { ApiError } from '../middleware/error.middleware';
-import sharp from 'sharp';
 import * as admin from 'firebase-admin';
+
+// Lazy-load sharp to prevent crash if platform binary is missing
+let sharp: any = null;
+function getSharp() {
+  if (!sharp) {
+    try {
+      sharp = require('sharp');
+    } catch (error) {
+      logger.error('Sharp module not available. Photo processing will fail.', { error });
+      throw new ApiError('Photo processing unavailable. Please contact support.', 500);
+    }
+  }
+  return sharp;
+}
 
 function getFirebaseBucket() {
   if (!admin.apps.length) {
@@ -270,7 +283,7 @@ export class PhotoService {
    * Process image (compress, resize)
    */
   private async processImage(buffer: Buffer): Promise<{ buffer: Buffer; width: number; height: number; length: number }> {
-    const image = sharp(buffer);
+    const image = getSharp()(buffer);
     const metadata = await image.metadata();
 
     // Resize if too large (max 2048px on longest side)
@@ -308,7 +321,7 @@ export class PhotoService {
    * Generate thumbnail
    */
   private async generateThumbnail(buffer: Buffer): Promise<Buffer> {
-    return sharp(buffer)
+    return getSharp()(buffer)
       .resize(300, 300, {
         fit: 'inside',
         withoutEnlargement: true,
