@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     if (error instanceof ApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[login] Unexpected error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })
   }
 }
