@@ -59,7 +59,10 @@ export class AuthService {
       .select('id, email, name, role, email_verified, created_at')
       .single()
 
-    if (error) throw new ApiError('Failed to create user', 500)
+    if (error) {
+      console.error('[auth.service] Supabase insert error:', JSON.stringify(error))
+      throw new ApiError(`Failed to create user: ${error.message}`, 500)
+    }
 
     if (process.env.ENABLE_EMAIL_VERIFICATION === 'true') {
       try {
