@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import { prisma } from './prisma'
+import { supabase } from './supabase-admin'
 
 export interface AuthUser {
   id: string
@@ -22,11 +22,14 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
       email: string
       role: string
     }
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId, deletedAt: null },
-      select: { id: true, email: true, role: true },
-    })
-    return user ? { id: user.id, email: user.email, role: user.role as string } : null
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email, role')
+      .eq('id', decoded.userId)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    return user ? { id: user.id, email: user.email, role: user.role } : null
   } catch {
     return null
   }

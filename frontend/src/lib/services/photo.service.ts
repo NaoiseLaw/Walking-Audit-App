@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { supabase, toCamel } from '@/lib/supabase-admin'
 import { redis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { ApiError } from '@/lib/api-error'
@@ -52,12 +52,12 @@ interface ConfirmUploadData {
 }
 
 export class PhotoService {
-  /**
-   * Generate a signed URL for direct browser upload to Firebase Storage.
-   * The browser uploads the file directly; no data passes through Next.js.
-   */
   async getUploadUrl(userId: string, data: GetUploadUrlData) {
-    const audit = await prisma.audit.findUnique({ where: { id: data.auditId } })
+    const { data: audit } = await supabase
+      .from('audits')
+      .select('id')
+      .eq('id', data.auditId)
+      .maybeSingle()
     if (!audit) throw new ApiError('Audit not found', 404)
 
     const bucket = getFirebaseBucket()
@@ -68,20 +68,20 @@ export class PhotoService {
 
     const [signedUrl] = await file.getSignedUrl({
       action: 'write',
-      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+      expires: Date.now() + 15 * 60 * 1000,
       contentType: data.mimeType,
     })
 
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`
-
     return { uploadUrl: signedUrl, storagePath, publicUrl }
   }
 
-  /**
-   * Save photo metadata after the browser has uploaded the file directly to Firebase.
-   */
   async confirmUpload(userId: string, data: ConfirmUploadData) {
-    const audit = await prisma.audit.findUnique({ where: { id: data.auditId } })
+    const { data: audit } = await supabase
+      .from('audits')
+      .select('id')
+      .eq('id', data.auditId)
+      .maybeSingle()
     if (!audit) throw new ApiError('Audit not found', 404)
 
     let photoLocation: string | null = null
@@ -92,44 +92,51 @@ export class PhotoService {
       locationAccuracy = data.location.accuracy || null
     }
 
-    const photo = await prisma.photo.create({
-      data: {
-        auditId: data.auditId,
-        issueId: data.issueId || null,
+    const { data: photo, error } = await supabase
+      .from('photos')
+      .insert({
+        audit_id: data.auditId,
+        issue_id: data.issueId || null,
         url: data.publicUrl,
         filename: data.filename,
-        originalFilename: data.filename,
-        fileSizeKb: data.fileSizeKb,
-        mimeType: data.mimeType,
-        widthPx: data.widthPx,
-        heightPx: data.heightPx,
+        original_filename: data.filename,
+        file_size_kb: data.fileSizeKb,
+        mime_type: data.mimeType,
+        width_px: data.widthPx,
+        height_px: data.heightPx,
         location: photoLocation,
-        locationAccuracyMeters: locationAccuracy,
-        locationSource: data.location ? 'user' : null,
-        exifData: data.exifData || {},
+        location_accuracy_meters: locationAccuracy,
+        location_source: data.location ? 'user' : null,
+        exif_data: data.exifData || {},
         processed: false,
-        compressionApplied: false,
-        uploadedBy: userId,
-      },
-    })
+        compression_applied: false,
+        uploaded_by: userId,
+      })
+      .select()
+      .single()
+
+    if (error) throw new ApiError('Failed to save photo', 500)
 
     await redis.del(`audit:${data.auditId}:photos`)
     logger.info(`Photo confirmed: ${photo.id} by user ${userId}`)
-    return photo
+    return toCamel(photo)
   }
 
   async getById(photoId: string) {
-    const photo = await prisma.photo.findUnique({
-      where: { id: photoId, deletedAt: null },
-      include: {
-        audit: { select: { id: true, routeId: true } },
-        issue: { select: { id: true, title: true } },
-        uploader: { select: { id: true, name: true } },
-      },
-    })
+    const { data: photo } = await supabase
+      .from('photos')
+      .select(`
+        *,
+        audit:audits(id, route_id),
+        issue:issues(id, title),
+        uploader:users!uploaded_by(id, name)
+      `)
+      .eq('id', photoId)
+      .is('deleted_at', null)
+      .maybeSingle()
 
     if (!photo) throw new ApiError('Photo not found', 404)
-    return photo
+    return toCamel(photo)
   }
 
   async list(filters: {
@@ -141,36 +148,43 @@ export class PhotoService {
   }) {
     const { auditId, issueId, userId, limit = 50, offset = 0 } = filters
 
-    const where: any = { deletedAt: null }
-    if (auditId) where.auditId = auditId
-    if (issueId) where.issueId = issueId
-    if (userId) where.uploadedBy = userId
+    let query = supabase
+      .from('photos')
+      .select('*', { count: 'exact' })
+      .is('deleted_at', null)
 
-    const [photos, total] = await Promise.all([
-      prisma.photo.findMany({
-        where,
-        orderBy: { uploadedAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.photo.count({ where }),
-    ])
+    if (auditId) query = query.eq('audit_id', auditId)
+    if (issueId) query = query.eq('issue_id', issueId)
+    if (userId) query = query.eq('uploaded_by', userId)
 
-    return { photos, pagination: { total, limit, offset, hasMore: offset + limit < total } }
+    const { data: photos, count, error } = await query
+      .order('uploaded_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) throw new ApiError('Failed to list photos', 500)
+
+    const total = count || 0
+    return {
+      photos: toCamel(photos || []),
+      pagination: { total, limit, offset, hasMore: offset + limit < total },
+    }
   }
 
   async delete(photoId: string, userId: string) {
-    const photo = await prisma.photo.findUnique({ where: { id: photoId } })
+    const { data: photo } = await supabase
+      .from('photos')
+      .select('id, uploaded_by, audit_id, url')
+      .eq('id', photoId)
+      .maybeSingle()
     if (!photo) throw new ApiError('Photo not found', 404)
 
-    if (photo.uploadedBy !== userId) {
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (photo.uploaded_by !== userId) {
+      const { data: user } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
       if (user?.role !== 'system_admin' && user?.role !== 'la_admin') {
         throw new ApiError('Insufficient permissions', 403)
       }
     }
 
-    // Attempt to delete from Firebase Storage
     try {
       const bucket = getFirebaseBucket()
       if (bucket && photo.url) {
@@ -181,8 +195,8 @@ export class PhotoService {
       logger.error(`Failed to delete photo from storage: ${error}`)
     }
 
-    await prisma.photo.update({ where: { id: photoId }, data: { deletedAt: new Date() } })
-    await redis.del(`audit:${photo.auditId}:photos`)
+    await supabase.from('photos').update({ deleted_at: new Date().toISOString() }).eq('id', photoId)
+    await redis.del(`audit:${photo.audit_id}:photos`)
     logger.info(`Photo deleted: ${photoId} by user ${userId}`)
   }
 }

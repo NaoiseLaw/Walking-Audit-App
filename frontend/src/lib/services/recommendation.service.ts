@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { supabase, toCamel } from '@/lib/supabase-admin'
 import { redis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { ApiError } from '@/lib/api-error'
@@ -36,53 +36,54 @@ interface UpdateRecommendationData {
 
 export class RecommendationService {
   async create(userId: string, data: CreateRecommendationData) {
-    const audit = await prisma.audit.findUnique({ where: { id: data.auditId } })
+    const { data: audit } = await supabase
+      .from('audits')
+      .select('id')
+      .eq('id', data.auditId)
+      .maybeSingle()
     if (!audit) throw new ApiError('Audit not found', 404)
 
     const issueCount = data.relatedIssueIds?.length || 0
 
-    const recommendation = await prisma.recommendation.create({
-      data: {
-        auditId: data.auditId,
+    const { data: recommendation, error } = await supabase
+      .from('recommendations')
+      .insert({
+        audit_id: data.auditId,
         priority: data.priority,
         title: data.title,
         description: data.description,
         rationale: data.rationale,
-        relatedIssueIds: data.relatedIssueIds || [],
-        issueCount,
-        estimatedCostEuros: data.estimatedCostEuros,
-        estimatedTimeframe: data.estimatedTimeframe,
+        related_issue_ids: data.relatedIssueIds || [],
+        issue_count: issueCount,
+        estimated_cost_euros: data.estimatedCostEuros,
+        estimated_timeframe: data.estimatedTimeframe,
         complexity: data.complexity,
         category: data.category,
-        laStatus: 'pending',
-      },
-    })
+        la_status: 'pending',
+      })
+      .select()
+      .single()
+
+    if (error) throw new ApiError('Failed to create recommendation', 500)
 
     await redis.del(`audit:${data.auditId}:recommendations`)
     logger.info(`Recommendation created: ${recommendation.id} by user ${userId}`)
-    return recommendation
+    return toCamel(recommendation)
   }
 
   async getById(recommendationId: string) {
-    const recommendation = await prisma.recommendation.findUnique({
-      where: { id: recommendationId, deletedAt: null },
-      include: {
-        audit: {
-          select: {
-            id: true,
-            routeId: true,
-            auditDate: true,
-            route: { select: { name: true, townCity: true, county: true } },
-          },
-        },
-        responder: { select: { id: true, name: true, organization: true } },
-        implementer: { select: { id: true, name: true, organization: true } },
-        verifier: { select: { id: true, name: true, organization: true } },
-      },
-    })
+    const { data: recommendation } = await supabase
+      .from('recommendations')
+      .select(`
+        *,
+        audit:audits(id, route_id, audit_date, route:routes(name, town_city, county))
+      `)
+      .eq('id', recommendationId)
+      .is('deleted_at', null)
+      .maybeSingle()
 
     if (!recommendation) throw new ApiError('Recommendation not found', 404)
-    return recommendation
+    return toCamel(recommendation)
   }
 
   async list(filters: {
@@ -96,109 +97,132 @@ export class RecommendationService {
   }) {
     const { auditId, laStatus, category, priority, county, limit = 20, offset = 0 } = filters
 
-    const where: any = { deletedAt: null }
-    if (auditId) where.auditId = auditId
-    if (laStatus) where.laStatus = laStatus
-    if (category) where.category = category
-    if (priority) where.priority = priority
-    if (county) where.audit = { route: { county } }
+    let query = supabase
+      .from('recommendations')
+      .select(`
+        *,
+        audit:audits(id, route_id, audit_date, route:routes(name, town_city, county))
+      `, { count: 'exact' })
+      .is('deleted_at', null)
 
-    const [recommendations, total] = await Promise.all([
-      prisma.recommendation.findMany({
-        where,
-        include: {
-          audit: {
-            select: {
-              id: true,
-              routeId: true,
-              auditDate: true,
-              route: { select: { name: true, townCity: true, county: true } },
-            },
-          },
-        },
-        orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
-        take: limit,
-        skip: offset,
-      }),
-      prisma.recommendation.count({ where }),
-    ])
+    if (auditId) query = query.eq('audit_id', auditId)
+    if (laStatus) query = query.eq('la_status', laStatus)
+    if (category) query = query.eq('category', category)
+    if (priority) query = query.eq('priority', priority)
 
-    return { recommendations, pagination: { total, limit, offset, hasMore: offset + limit < total } }
+    const { data: recommendations, count, error } = await query
+      .order('priority', { ascending: true })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) throw new ApiError('Failed to list recommendations', 500)
+
+    let results = recommendations || []
+    if (county) {
+      results = results.filter((r: any) => r.audit?.route?.county === county)
+    }
+
+    const total = count || 0
+    return {
+      recommendations: toCamel(results),
+      pagination: { total, limit, offset, hasMore: offset + limit < total },
+    }
   }
 
   async update(recommendationId: string, userId: string, data: UpdateRecommendationData) {
-    const recommendation = await prisma.recommendation.findUnique({ where: { id: recommendationId } })
+    const { data: recommendation } = await supabase
+      .from('recommendations')
+      .select('id, audit_id, issue_count')
+      .eq('id', recommendationId)
+      .maybeSingle()
     if (!recommendation) throw new ApiError('Recommendation not found', 404)
 
-    let issueCount = recommendation.issueCount
-    if (data.relatedIssueIds !== undefined) {
-      issueCount = data.relatedIssueIds.length
-    }
+    const issueCount = data.relatedIssueIds !== undefined
+      ? data.relatedIssueIds.length
+      : recommendation.issue_count
 
-    const updatedRecommendation = await prisma.recommendation.update({
-      where: { id: recommendationId },
-      data: {
-        priority: data.priority,
-        title: data.title,
-        description: data.description,
-        rationale: data.rationale,
-        relatedIssueIds: data.relatedIssueIds,
-        issueCount,
-        estimatedCostEuros: data.estimatedCostEuros,
-        estimatedTimeframe: data.estimatedTimeframe,
-        complexity: data.complexity,
-        category: data.category,
-        laResponse: data.laResponse,
-        laStatus: data.laStatus,
-        rejectionReason: data.rejectionReason,
-        implementationNotes: data.implementationNotes,
-        implementationCostEuros: data.implementationCostEuros,
-        verificationNotes: data.verificationNotes,
-      },
-    })
+    const updatePayload: any = { issue_count: issueCount }
+    if (data.priority !== undefined) updatePayload.priority = data.priority
+    if (data.title !== undefined) updatePayload.title = data.title
+    if (data.description !== undefined) updatePayload.description = data.description
+    if (data.rationale !== undefined) updatePayload.rationale = data.rationale
+    if (data.relatedIssueIds !== undefined) updatePayload.related_issue_ids = data.relatedIssueIds
+    if (data.estimatedCostEuros !== undefined) updatePayload.estimated_cost_euros = data.estimatedCostEuros
+    if (data.estimatedTimeframe !== undefined) updatePayload.estimated_timeframe = data.estimatedTimeframe
+    if (data.complexity !== undefined) updatePayload.complexity = data.complexity
+    if (data.category !== undefined) updatePayload.category = data.category
+    if (data.laResponse !== undefined) updatePayload.la_response = data.laResponse
+    if (data.laStatus !== undefined) updatePayload.la_status = data.laStatus
+    if (data.rejectionReason !== undefined) updatePayload.rejection_reason = data.rejectionReason
+    if (data.implementationNotes !== undefined) updatePayload.implementation_notes = data.implementationNotes
+    if (data.implementationCostEuros !== undefined) updatePayload.implementation_cost_euros = data.implementationCostEuros
+    if (data.verificationNotes !== undefined) updatePayload.verification_notes = data.verificationNotes
 
-    await redis.del(`audit:${recommendation.auditId}:recommendations`)
+    const { data: updated, error } = await supabase
+      .from('recommendations')
+      .update(updatePayload)
+      .eq('id', recommendationId)
+      .select()
+      .single()
+
+    if (error) throw new ApiError('Failed to update recommendation', 500)
+
+    await redis.del(`audit:${recommendation.audit_id}:recommendations`)
     logger.info(`Recommendation updated: ${recommendationId} by user ${userId}`)
-    return updatedRecommendation
+    return toCamel(updated)
   }
 
   async respond(recommendationId: string, userId: string, response: string, status: string, rejectionReason?: string) {
-    const recommendation = await prisma.recommendation.findUnique({ where: { id: recommendationId } })
+    const { data: recommendation } = await supabase
+      .from('recommendations')
+      .select('id, audit_id')
+      .eq('id', recommendationId)
+      .maybeSingle()
     if (!recommendation) throw new ApiError('Recommendation not found', 404)
 
-    const updatedRecommendation = await prisma.recommendation.update({
-      where: { id: recommendationId },
-      data: {
-        laResponse: response,
-        laResponseDate: new Date(),
-        laRespondedBy: userId,
-        laStatus: status,
-        rejectionReason: status === 'rejected' ? rejectionReason : null,
-      },
-    })
+    const { data: updated } = await supabase
+      .from('recommendations')
+      .update({
+        la_response: response,
+        la_response_date: new Date().toISOString(),
+        la_responded_by: userId,
+        la_status: status,
+        rejection_reason: status === 'rejected' ? rejectionReason : null,
+      })
+      .eq('id', recommendationId)
+      .select()
+      .single()
 
-    await redis.del(`audit:${recommendation.auditId}:recommendations`)
-    return updatedRecommendation
+    await redis.del(`audit:${recommendation.audit_id}:recommendations`)
+    return toCamel(updated)
   }
 
   async delete(recommendationId: string, userId: string) {
-    const recommendation = await prisma.recommendation.findUnique({ where: { id: recommendationId } })
+    const { data: recommendation } = await supabase
+      .from('recommendations')
+      .select('id, audit_id')
+      .eq('id', recommendationId)
+      .maybeSingle()
     if (!recommendation) throw new ApiError('Recommendation not found', 404)
 
-    const audit = await prisma.audit.findUnique({
-      where: { id: recommendation.auditId },
-      select: { coordinatorId: true },
-    })
+    const { data: audit } = await supabase
+      .from('audits')
+      .select('coordinator_id')
+      .eq('id', recommendation.audit_id)
+      .maybeSingle()
 
-    if (audit?.coordinatorId !== userId) {
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (audit?.coordinator_id !== userId) {
+      const { data: user } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
       if (user?.role !== 'system_admin' && user?.role !== 'la_admin') {
         throw new ApiError('Insufficient permissions', 403)
       }
     }
 
-    await prisma.recommendation.update({ where: { id: recommendationId }, data: { deletedAt: new Date() } })
-    await redis.del(`audit:${recommendation.auditId}:recommendations`)
+    await supabase
+      .from('recommendations')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', recommendationId)
+    await redis.del(`audit:${recommendation.audit_id}:recommendations`)
     logger.info(`Recommendation deleted: ${recommendationId} by user ${userId}`)
   }
 }

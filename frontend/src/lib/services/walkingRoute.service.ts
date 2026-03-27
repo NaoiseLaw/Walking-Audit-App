@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { supabase, toCamel } from '@/lib/supabase-admin'
 import { redis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { ApiError } from '@/lib/api-error'
@@ -55,37 +55,41 @@ interface UpdateRouteData {
 
 export class RouteService {
   async create(userId: string, data: CreateRouteData) {
-    const route = await prisma.route.create({
-      data: {
+    const { data: route, error } = await supabase
+      .from('routes')
+      .insert({
         name: data.name,
         description: data.description,
-        townCity: data.townCity,
+        town_city: data.townCity,
         county: data.county,
         eircode: data.eircode,
         geometry: data.geometry,
-        distanceMeters: data.distanceMeters,
-        avgGradientPercent: data.avgGradientPercent,
-        maxGradientPercent: data.maxGradientPercent,
-        minElevationMeters: data.minElevationMeters,
-        maxElevationMeters: data.maxElevationMeters,
-        permeabilityScore: data.permeabilityScore,
-        permeabilityNotes: data.permeabilityNotes,
-        hasPublicTransport: data.hasPublicTransport || false,
-        nearestBusStopMeters: data.nearestBusStopMeters,
-        nearestRailStationMeters: data.nearestRailStationMeters,
-        routeType: data.routeType,
-        surfaceType: data.surfaceType,
+        distance_meters: data.distanceMeters,
+        avg_gradient_percent: data.avgGradientPercent,
+        max_gradient_percent: data.maxGradientPercent,
+        min_elevation_meters: data.minElevationMeters,
+        max_elevation_meters: data.maxElevationMeters,
+        permeability_score: data.permeabilityScore,
+        permeability_notes: data.permeabilityNotes,
+        has_public_transport: data.hasPublicTransport || false,
+        nearest_bus_stop_meters: data.nearestBusStopMeters,
+        nearest_rail_station_meters: data.nearestRailStationMeters,
+        route_type: data.routeType,
+        surface_type: data.surfaceType,
         lighting: data.lighting,
         tags: data.tags || [],
-        isPublic: data.isPublic !== undefined ? data.isPublic : true,
-        isFeatured: data.isFeatured || false,
-        createdBy: userId,
-      },
-    })
+        is_public: data.isPublic !== undefined ? data.isPublic : true,
+        is_featured: data.isFeatured || false,
+        created_by: userId,
+      })
+      .select()
+      .single()
+
+    if (error) throw new ApiError('Failed to create route', 500)
 
     await redis.del(`route:${route.id}`)
     logger.info(`Route created: ${route.id} by user ${userId}`)
-    return route
+    return toCamel(route)
   }
 
   async getById(routeId: string) {
@@ -93,18 +97,24 @@ export class RouteService {
     const cached = await redis.get(cacheKey)
     if (cached) return JSON.parse(cached)
 
-    const route = await prisma.route.findUnique({
-      where: { id: routeId, deletedAt: null },
-      include: {
-        creator: { select: { id: true, name: true, organization: true } },
-        _count: { select: { audits: { where: { deletedAt: null } } } },
-      },
-    })
+    const { data: route } = await supabase
+      .from('routes')
+      .select('*, creator:users!created_by(id, name, organization)')
+      .eq('id', routeId)
+      .is('deleted_at', null)
+      .maybeSingle()
 
     if (!route) throw new ApiError('Route not found', 404)
 
-    await redis.setex(cacheKey, 600, JSON.stringify(route))
-    return route
+    const { count: auditCount } = await supabase
+      .from('audits')
+      .select('*', { count: 'exact', head: true })
+      .eq('route_id', routeId)
+      .is('deleted_at', null)
+
+    const result = toCamel({ ...route, _count: { audits: auditCount || 0 } })
+    await redis.setex(cacheKey, 600, JSON.stringify(result))
+    return result
   }
 
   async list(filters: {
@@ -118,118 +128,133 @@ export class RouteService {
   }) {
     const { county, townCity, isPublic, isFeatured, search, limit = 20, offset = 0 } = filters
 
-    const where: any = { deletedAt: null }
-    if (county) where.county = county
-    if (townCity) where.townCity = townCity
-    if (isPublic !== undefined) where.isPublic = isPublic
-    if (isFeatured !== undefined) where.isFeatured = isFeatured
+    let query = supabase
+      .from('routes')
+      .select('*, creator:users!created_by(id, name, organization)', { count: 'exact' })
+      .is('deleted_at', null)
+
+    if (county) query = query.eq('county', county)
+    if (townCity) query = query.eq('town_city', townCity)
+    if (isPublic !== undefined) query = query.eq('is_public', isPublic)
+    if (isFeatured !== undefined) query = query.eq('is_featured', isFeatured)
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { townCity: { contains: search, mode: 'insensitive' } },
-      ]
+      query = query.or(
+        `name.ilike.%${search}%,description.ilike.%${search}%,town_city.ilike.%${search}%`
+      )
     }
 
-    const [routes, total] = await Promise.all([
-      prisma.route.findMany({
-        where,
-        include: {
-          creator: { select: { id: true, name: true, organization: true } },
-          _count: { select: { audits: { where: { deletedAt: null } } } },
-        },
-        orderBy: [{ isFeatured: 'desc' }, { lastAudited: 'desc' }, { createdAt: 'desc' }],
-        take: limit,
-        skip: offset,
-      }),
-      prisma.route.count({ where }),
-    ])
+    const { data: routes, count, error } = await query
+      .order('is_featured', { ascending: false })
+      .order('last_audited', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
-    return { routes, pagination: { total, limit, offset, hasMore: offset + limit < total } }
+    if (error) throw new ApiError('Failed to list routes', 500)
+
+    const total = count || 0
+    return {
+      routes: toCamel(routes || []),
+      pagination: { total, limit, offset, hasMore: offset + limit < total },
+    }
   }
 
   async getNearby(params: { latitude: number; longitude: number; radiusMeters?: number; limit?: number }) {
     const { latitude, longitude, radiusMeters = 1000, limit = 10 } = params
 
-    const routes = await prisma.$queryRaw<any[]>`
-      SELECT
-        r.*,
-        ST_Distance(
-          ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857),
-          ST_Transform(ST_GeomFromText(r.geometry, 4326), 3857)
-        ) AS distance_meters
-      FROM routes r
-      WHERE r.deleted_at IS NULL
-        AND r.is_public = true
-        AND ST_DWithin(
-          ST_Transform(ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326), 3857),
-          ST_Transform(ST_GeomFromText(r.geometry, 4326), 3857),
-          ${radiusMeters}
-        )
-      ORDER BY distance_meters
-      LIMIT ${limit}
-    `
-    return routes
+    // PostGIS query via Supabase RPC — requires get_nearby_routes function in DB
+    const { data, error } = await supabase.rpc('get_nearby_routes', {
+      lat: latitude,
+      lng: longitude,
+      radius_meters: radiusMeters,
+      max_results: limit,
+    })
+
+    if (error) {
+      // Fallback: return public routes without distance filtering
+      logger.warn('getNearby RPC failed, falling back to list:', error.message)
+      const { data: fallback } = await supabase
+        .from('routes')
+        .select('*')
+        .is('deleted_at', null)
+        .eq('is_public', true)
+        .limit(limit)
+      return toCamel(fallback || [])
+    }
+
+    return toCamel(data || [])
   }
 
   async update(routeId: string, userId: string, data: UpdateRouteData) {
-    const route = await prisma.route.findUnique({ where: { id: routeId } })
+    const { data: route } = await supabase
+      .from('routes')
+      .select('created_by')
+      .eq('id', routeId)
+      .maybeSingle()
     if (!route) throw new ApiError('Route not found', 404)
 
-    if (route.createdBy !== userId) {
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (route.created_by !== userId) {
+      const { data: user } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
       if (user?.role !== 'system_admin' && user?.role !== 'la_admin') {
         throw new ApiError('Insufficient permissions', 403)
       }
     }
 
-    const updatedRoute = await prisma.route.update({
-      where: { id: routeId },
-      data: {
-        name: data.name,
-        description: data.description,
-        townCity: data.townCity,
-        county: data.county,
-        eircode: data.eircode,
-        geometry: data.geometry,
-        distanceMeters: data.distanceMeters,
-        avgGradientPercent: data.avgGradientPercent,
-        maxGradientPercent: data.maxGradientPercent,
-        minElevationMeters: data.minElevationMeters,
-        maxElevationMeters: data.maxElevationMeters,
-        permeabilityScore: data.permeabilityScore,
-        permeabilityNotes: data.permeabilityNotes,
-        hasPublicTransport: data.hasPublicTransport,
-        nearestBusStopMeters: data.nearestBusStopMeters,
-        nearestRailStationMeters: data.nearestRailStationMeters,
-        routeType: data.routeType,
-        surfaceType: data.surfaceType,
-        lighting: data.lighting,
-        tags: data.tags,
-        isPublic: data.isPublic,
-        isFeatured: data.isFeatured,
-      },
-    })
+    const updatePayload: any = {}
+    if (data.name !== undefined) updatePayload.name = data.name
+    if (data.description !== undefined) updatePayload.description = data.description
+    if (data.townCity !== undefined) updatePayload.town_city = data.townCity
+    if (data.county !== undefined) updatePayload.county = data.county
+    if (data.eircode !== undefined) updatePayload.eircode = data.eircode
+    if (data.geometry !== undefined) updatePayload.geometry = data.geometry
+    if (data.distanceMeters !== undefined) updatePayload.distance_meters = data.distanceMeters
+    if (data.avgGradientPercent !== undefined) updatePayload.avg_gradient_percent = data.avgGradientPercent
+    if (data.maxGradientPercent !== undefined) updatePayload.max_gradient_percent = data.maxGradientPercent
+    if (data.minElevationMeters !== undefined) updatePayload.min_elevation_meters = data.minElevationMeters
+    if (data.maxElevationMeters !== undefined) updatePayload.max_elevation_meters = data.maxElevationMeters
+    if (data.permeabilityScore !== undefined) updatePayload.permeability_score = data.permeabilityScore
+    if (data.permeabilityNotes !== undefined) updatePayload.permeability_notes = data.permeabilityNotes
+    if (data.hasPublicTransport !== undefined) updatePayload.has_public_transport = data.hasPublicTransport
+    if (data.nearestBusStopMeters !== undefined) updatePayload.nearest_bus_stop_meters = data.nearestBusStopMeters
+    if (data.nearestRailStationMeters !== undefined) updatePayload.nearest_rail_station_meters = data.nearestRailStationMeters
+    if (data.routeType !== undefined) updatePayload.route_type = data.routeType
+    if (data.surfaceType !== undefined) updatePayload.surface_type = data.surfaceType
+    if (data.lighting !== undefined) updatePayload.lighting = data.lighting
+    if (data.tags !== undefined) updatePayload.tags = data.tags
+    if (data.isPublic !== undefined) updatePayload.is_public = data.isPublic
+    if (data.isFeatured !== undefined) updatePayload.is_featured = data.isFeatured
+
+    const { data: updatedRoute, error } = await supabase
+      .from('routes')
+      .update(updatePayload)
+      .eq('id', routeId)
+      .select()
+      .single()
+
+    if (error) throw new ApiError('Failed to update route', 500)
 
     await redis.del(`route:${routeId}`)
     logger.info(`Route updated: ${routeId} by user ${userId}`)
-    return updatedRoute
+    return toCamel(updatedRoute)
   }
 
   async delete(routeId: string, userId: string) {
-    const route = await prisma.route.findUnique({ where: { id: routeId } })
+    const { data: route } = await supabase
+      .from('routes')
+      .select('created_by')
+      .eq('id', routeId)
+      .maybeSingle()
     if (!route) throw new ApiError('Route not found', 404)
 
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    const { data: user } = await supabase.from('users').select('role').eq('id', userId).maybeSingle()
     if (
-      route.createdBy !== userId &&
+      route.created_by !== userId &&
       user?.role !== 'system_admin' &&
       user?.role !== 'la_admin'
     ) {
       throw new ApiError('Insufficient permissions', 403)
     }
 
-    await prisma.route.update({ where: { id: routeId }, data: { deletedAt: new Date() } })
+    await supabase.from('routes').update({ deleted_at: new Date().toISOString() }).eq('id', routeId)
     await redis.del(`route:${routeId}`)
     logger.info(`Route deleted: ${routeId} by user ${userId}`)
   }

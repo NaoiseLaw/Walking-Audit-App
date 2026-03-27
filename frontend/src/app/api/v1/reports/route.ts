@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase, toCamel } from '@/lib/supabase-admin'
 import { getAuthUser, unauthorized, serverError } from '@/lib/auth-helpers'
 
 export async function GET(req: NextRequest) {
@@ -11,29 +11,20 @@ export async function GET(req: NextRequest) {
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0
 
-    const where: any = { deletedAt: null, reportPdfUrl: { not: null } }
+    const { data: audits, count } = await supabase
+      .from('audits')
+      .select(
+        'id, report_pdf_url, report_generated_at, report_version, audit_date, route:routes(id, name, town_city, county), coordinator:users!coordinator_id(id, name)',
+        { count: 'exact' }
+      )
+      .is('deleted_at', null)
+      .not('report_pdf_url', 'is', null)
+      .order('report_generated_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
-    const [audits, total] = await Promise.all([
-      prisma.audit.findMany({
-        where,
-        select: {
-          id: true,
-          reportPdfUrl: true,
-          reportGeneratedAt: true,
-          reportVersion: true,
-          auditDate: true,
-          route: { select: { id: true, name: true, townCity: true, county: true } },
-          coordinator: { select: { id: true, name: true } },
-        },
-        orderBy: { reportGeneratedAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.audit.count({ where }),
-    ])
-
+    const total = count || 0
     return NextResponse.json({
-      reports: audits,
+      reports: toCamel(audits || []),
       pagination: { total, limit, offset, hasMore: offset + limit < total },
     })
   } catch {

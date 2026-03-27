@@ -1,46 +1,51 @@
-import { prisma } from '@/lib/prisma'
+import { supabase, toCamel } from '@/lib/supabase-admin'
 import { logger } from '@/lib/logger'
 import { ApiError } from '@/lib/api-error'
 
 // Note: PDF generation via Puppeteer is not available on Vercel serverless.
 // Reports are generated as HTML and uploaded to Firebase Storage.
-// To enable PDF generation, use a dedicated service (e.g., DocRaptor, Gotenberg).
 
 export class ReportService {
   async generateReport(auditId: string) {
-    const audit = await prisma.audit.findUnique({
-      where: { id: auditId },
-      include: {
-        route: true,
-        coordinator: true,
-        participants: { include: { abilities: true } },
-        sections: true,
-        issues: { where: { deletedAt: null }, include: { photos: { where: { deletedAt: null }, take: 1 } } },
-        recommendations: { where: { deletedAt: null } },
-        reportMetrics: true,
-      },
-    })
+    const { data: audit } = await supabase
+      .from('audits')
+      .select(`
+        *,
+        route:routes(*),
+        coordinator:users!coordinator_id(*),
+        participants:audit_participants(*, abilities:participant_abilities(*)),
+        sections:audit_sections(*),
+        issues(*),
+        recommendations(*)
+      `)
+      .eq('id', auditId)
+      .maybeSingle()
 
     if (!audit) throw new ApiError('Audit not found', 404)
 
+    // Filter soft-deleted nested records
+    const auditWithFiltered = {
+      ...audit,
+      issues: (audit.issues || []).filter((i: any) => !i.deleted_at),
+      recommendations: (audit.recommendations || []).filter((r: any) => !r.deleted_at),
+    }
+
     // Return existing report if recent (< 24h)
-    if (audit.reportPdfUrl && audit.reportGeneratedAt) {
-      const hoursSince = (Date.now() - audit.reportGeneratedAt.getTime()) / (1000 * 60 * 60)
+    if (audit.report_pdf_url && audit.report_generated_at) {
+      const hoursSince = (Date.now() - new Date(audit.report_generated_at).getTime()) / (1000 * 60 * 60)
       if (hoursSince < 24) {
-        return { url: audit.reportPdfUrl, generatedAt: audit.reportGeneratedAt }
+        return { url: audit.report_pdf_url, generatedAt: audit.report_generated_at }
       }
     }
 
-    // Generate HTML report content
-    const html = this.generateReportHTML(audit)
+    const html = this.generateReportHTML(toCamel(auditWithFiltered))
 
-    // Upload HTML to Firebase if configured, otherwise return inline
-    let reportUrl = audit.reportPdfUrl
+    let reportUrl = audit.report_pdf_url
 
     try {
-      const { default: admin } = await import('firebase-admin')
-      if (process.env.FIREBASE_STORAGE_BUCKET && admin.apps.length > 0) {
-        const bucket = admin.storage().bucket()
+      const { default: adminModule } = await import('firebase-admin')
+      if (process.env.FIREBASE_STORAGE_BUCKET && adminModule.apps.length > 0) {
+        const bucket = adminModule.storage().bucket()
         const fileName = `reports/${auditId}/${Date.now()}-report.html`
         const file = bucket.file(fileName)
         await file.save(Buffer.from(html, 'utf8'), {
@@ -51,18 +56,14 @@ export class ReportService {
       }
     } catch (error) {
       logger.error(`Failed to upload report to Firebase: ${error}`)
-      // Fall through — still update the record without a URL
     }
 
     if (reportUrl) {
-      await prisma.audit.update({
-        where: { id: auditId },
-        data: {
-          reportPdfUrl: reportUrl,
-          reportGeneratedAt: new Date(),
-          reportVersion: { increment: 1 },
-        },
-      })
+      await supabase.from('audits').update({
+        report_pdf_url: reportUrl,
+        report_generated_at: new Date().toISOString(),
+        report_version: (audit.report_version || 0) + 1,
+      }).eq('id', auditId)
     }
 
     logger.info(`Report generated for audit: ${auditId}`)
@@ -70,15 +71,16 @@ export class ReportService {
   }
 
   async getReportUrl(auditId: string) {
-    const audit = await prisma.audit.findUnique({
-      where: { id: auditId },
-      select: { reportPdfUrl: true, reportGeneratedAt: true },
-    })
+    const { data: audit } = await supabase
+      .from('audits')
+      .select('report_pdf_url, report_generated_at')
+      .eq('id', auditId)
+      .maybeSingle()
 
     if (!audit) throw new ApiError('Audit not found', 404)
-    if (!audit.reportPdfUrl) throw new ApiError('Report not yet generated', 404)
+    if (!audit.report_pdf_url) throw new ApiError('Report not yet generated', 404)
 
-    return { url: audit.reportPdfUrl, generatedAt: audit.reportGeneratedAt }
+    return { url: audit.report_pdf_url, generatedAt: audit.report_generated_at }
   }
 
   private generateReportHTML(audit: any): string {
@@ -112,17 +114,17 @@ export class ReportService {
     <h2>Section Scores</h2>
     <table>
       <tr><th>Section</th><th>Score</th></tr>
-      ${audit.sections.map((s: any) => `<tr><td>${s.section.replace(/_/g, ' ')}</td><td>${s.score}/5</td></tr>`).join('')}
+      ${(audit.sections || []).map((s: any) => `<tr><td>${s.section.replace(/_/g, ' ')}</td><td>${s.score}/5</td></tr>`).join('')}
     </table>
 
-    <h2>Issues (${audit.issues.length})</h2>
+    <h2>Issues (${(audit.issues || []).length})</h2>
     <table>
       <tr><th>Category</th><th>Severity</th><th>Title</th></tr>
-      ${audit.issues.map((i: any) => `<tr><td>${i.category}</td><td>${i.severity}</td><td>${i.title}</td></tr>`).join('')}
+      ${(audit.issues || []).map((i: any) => `<tr><td>${i.category}</td><td>${i.severity}</td><td>${i.title}</td></tr>`).join('')}
     </table>
 
-    <h2>Recommendations (${audit.recommendations.length})</h2>
-    ${audit.recommendations.map((r: any) => `
+    <h2>Recommendations (${(audit.recommendations || []).length})</h2>
+    ${(audit.recommendations || []).map((r: any) => `
       <div class="section">
         <h3>${r.title}</h3>
         <p>${r.description}</p>

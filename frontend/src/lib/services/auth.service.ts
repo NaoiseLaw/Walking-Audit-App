@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
-import { prisma } from '@/lib/prisma'
+import { supabase, toCamel } from '@/lib/supabase-admin'
 import { logger } from '@/lib/logger'
 import { ApiError } from '@/lib/api-error'
 
@@ -28,8 +28,13 @@ export class AuthService {
   async register(data: RegisterData) {
     const { email, password, name, role = 'auditor', organization, county } = data
 
-    const existingUser = await prisma.user.findUnique({ where: { email } })
-    if (existingUser && !existingUser.deletedAt) {
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id, deleted_at')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (existing && !existing.deleted_at) {
       throw new ApiError('Email already registered', 409)
     }
 
@@ -38,62 +43,63 @@ export class AuthService {
     const verificationExpires = new Date()
     verificationExpires.setHours(verificationExpires.getHours() + 24)
 
-    const user = await prisma.user.create({
-      data: {
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({
         email,
-        passwordHash,
+        password_hash: passwordHash,
         name,
-        role: role as any,
+        role,
         organization,
         county,
-        verificationToken,
-        verificationExpires,
-        emailVerified: process.env.ENABLE_EMAIL_VERIFICATION !== 'true',
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        emailVerified: true,
-        createdAt: true,
-      },
-    })
+        verification_token: verificationToken,
+        verification_expires: verificationExpires.toISOString(),
+        email_verified: process.env.ENABLE_EMAIL_VERIFICATION !== 'true',
+      })
+      .select('id, email, name, role, email_verified, created_at')
+      .single()
+
+    if (error) throw new ApiError('Failed to create user', 500)
 
     if (process.env.ENABLE_EMAIL_VERIFICATION === 'true') {
       try {
         const { emailService } = await import('./email.service')
         await emailService.sendVerificationEmail(user.id, email, verificationToken)
-      } catch (error) {
-        logger.error(`Failed to send verification email: ${error}`)
+      } catch (err) {
+        logger.error(`Failed to send verification email: ${err}`)
       }
     }
 
     logger.info(`User registered: ${user.email}`)
-    return user
+    return toCamel(user)
   }
 
   async login(data: LoginData) {
     const { email, password } = data
 
-    const user = await prisma.user.findUnique({ where: { email } })
-    if (!user || user.deletedAt) {
+    const { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (!user || user.deleted_at) {
       throw new ApiError('Invalid email or password', 401)
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash)
+    const isValidPassword = await bcrypt.compare(password, user.password_hash)
     if (!isValidPassword) {
       throw new ApiError('Invalid email or password', 401)
     }
 
-    if (!user.emailVerified && process.env.ENABLE_EMAIL_VERIFICATION === 'true') {
+    if (!user.email_verified && process.env.ENABLE_EMAIL_VERIFICATION === 'true') {
       throw new ApiError('Email not verified', 403)
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() },
-    })
+    await supabase
+      .from('users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', user.id)
 
     const accessToken = this.generateAccessToken(user.id, user.email, user.role)
     const refreshToken = this.generateRefreshToken(user.id)
@@ -106,7 +112,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
-        emailVerified: user.emailVerified,
+        emailVerified: user.email_verified,
       },
       tokens: { accessToken, refreshToken },
     }
@@ -116,23 +122,30 @@ export class AuthService {
     try {
       const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { userId: string }
 
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.userId, deletedAt: null },
-      })
+      const { data: user } = await supabase
+        .from('users')
+        .select('id, email, role')
+        .eq('id', decoded.userId)
+        .is('deleted_at', null)
+        .maybeSingle()
 
       if (!user) throw new ApiError('User not found', 401)
 
       const accessToken = this.generateAccessToken(user.id, user.email, user.role)
       return { accessToken }
-    } catch (error) {
+    } catch {
       throw new ApiError('Invalid refresh token', 401)
     }
   }
 
   async forgotPassword(email: string) {
-    const user = await prisma.user.findUnique({ where: { email } })
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email, deleted_at')
+      .eq('email', email)
+      .maybeSingle()
 
-    if (!user || user.deletedAt) {
+    if (!user || user.deleted_at) {
       return { message: 'If the email exists, a password reset link has been sent' }
     }
 
@@ -140,75 +153,88 @@ export class AuthService {
     const resetExpires = new Date()
     resetExpires.setHours(resetExpires.getHours() + 1)
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { resetToken, resetExpires },
-    })
+    await supabase
+      .from('users')
+      .update({ reset_token: resetToken, reset_expires: resetExpires.toISOString() })
+      .eq('id', user.id)
 
     try {
       const { emailService } = await import('./email.service')
       await emailService.sendPasswordResetEmail(user.id, email, resetToken)
-    } catch (error) {
-      logger.error(`Failed to send password reset email: ${error}`)
+    } catch (err) {
+      logger.error(`Failed to send password reset email: ${err}`)
     }
 
     return { message: 'If the email exists, a password reset link has been sent' }
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const user = await prisma.user.findFirst({
-      where: { resetToken: token, resetExpires: { gt: new Date() } },
-    })
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('reset_token', token)
+      .gt('reset_expires', new Date().toISOString())
+      .maybeSingle()
 
     if (!user) throw new ApiError('Invalid or expired reset token', 400)
 
     const passwordHash = await bcrypt.hash(newPassword, 12)
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash, resetToken: null, resetExpires: null },
-    })
+    await supabase
+      .from('users')
+      .update({ password_hash: passwordHash, reset_token: null, reset_expires: null })
+      .eq('id', user.id)
 
     logger.info(`Password reset for user: ${user.email}`)
     return { message: 'Password reset successfully' }
   }
 
   async verifyEmail(token: string) {
-    const user = await prisma.user.findFirst({
-      where: { verificationToken: token, verificationExpires: { gt: new Date() } },
-    })
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('verification_token', token)
+      .gt('verification_expires', new Date().toISOString())
+      .maybeSingle()
 
     if (!user) throw new ApiError('Invalid or expired verification token', 400)
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { emailVerified: true, verificationToken: null, verificationExpires: null },
-    })
+    await supabase
+      .from('users')
+      .update({ email_verified: true, verification_token: null, verification_expires: null })
+      .eq('id', user.id)
 
     logger.info(`Email verified for user: ${user.email}`)
     return { message: 'Email verified successfully' }
   }
 
   async resendVerification(email: string) {
-    const user = await prisma.user.findUnique({ where: { email } })
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email_verified, deleted_at')
+      .eq('email', email)
+      .maybeSingle()
 
-    if (!user || user.deletedAt) throw new ApiError('User not found', 404)
-    if (user.emailVerified) throw new ApiError('Email already verified', 400)
+    if (!user || user.deleted_at) throw new ApiError('User not found', 404)
+    if (user.email_verified) throw new ApiError('Email already verified', 400)
 
     const verificationToken = crypto.randomBytes(32).toString('hex')
     const verificationExpires = new Date()
     verificationExpires.setHours(verificationExpires.getHours() + 24)
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { verificationToken, verificationExpires },
-    })
+    await supabase
+      .from('users')
+      .update({
+        verification_token: verificationToken,
+        verification_expires: verificationExpires.toISOString(),
+      })
+      .eq('id', user.id)
 
     try {
       const { emailService } = await import('./email.service')
       await emailService.sendVerificationEmail(user.id, email, verificationToken)
-    } catch (error) {
-      logger.error(`Failed to send verification email: ${error}`)
+    } catch (err) {
+      logger.error(`Failed to send verification email: ${err}`)
     }
 
     return { message: 'Verification email sent' }
