@@ -19,10 +19,13 @@ const nextConfig = {
     domains: [
       'firebasestorage.googleapis.com',
       'walkingaudit.appspot.com',
+      'storage.googleapis.com',
     ],
   },
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+  },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://walking-audit-app-backend-jz2nvgc9o-naoiselaws-projects.vercel.app',
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   },
 };

@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Relative path — works in local dev and on Vercel without NEXT_PUBLIC_API_URL
+const API_URL = '/api';
 
 export class ApiClient {
   private baseUrl: string;
