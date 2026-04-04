@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Walking Audit App — User Guide & Feature Manual</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --green-dark: #14532d;
+      --blue: #2563eb;
+      --blue-light: #eff6ff;
+      --grey-50: #f9fafb;
+      --grey-100: #f3f4f6;
+      --grey-200: #e5e7eb;
+      --grey-300: #d1d5db;
+      --grey-600: #4b5563;
+      --grey-700: #374151;
+      --grey-800: #1f2937;
+      --grey-900: #111827;
+      --amber: #d97706;
+      --amber-light: #fef3c7;
+      --red: #dc2626;
+      --red-light: #fee2e2;
+      --radius: 10px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--grey-50);
+      color: var(--grey-800);
+      line-height: 1.6;
+    }
+
+    /* ── HEADER ── */
+    .app-header {
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%);
+      color: white;
+      padding: 2rem 2.5rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .app-header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    .app-header p { font-size: 0.875rem; opacity: 0.85; margin-top: 0.25rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 99px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-green { background: rgba(255,255,255,0.2); color: white; margin-left: 0.5rem; }
+
+    /* ── NAV TABS ── */
+    .nav-outer {
+      background: white;
+      border-bottom: 1px solid var(--grey-200);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 1.5rem;
+      min-width: max-content;
+    }
+    .nav-tab {
+      padding: 0.875rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--grey-600);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .nav-tab:hover { color: var(--green); }
+    .nav-tab.active {
+      color: var(--green);
+      border-bottom-color: var(--green);
+      font-weight: 600;
+    }
+
+    /* ── CONTENT ── */
+    .content-area {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── TYPOGRAPHY ── */
+    h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--grey-900);
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--green-light);
+    }
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--grey-800);
+      margin: 1.75rem 0 0.75rem;
+    }
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--green-dark);
+      margin: 1.25rem 0 0.5rem;
+    }
+    p { margin-bottom: 0.875rem; color: var(--grey-700); }
+    ul, ol { margin: 0.5rem 0 0.875rem 1.25rem; color: var(--grey-700); }
+    li { margin-bottom: 0.35rem; }
+    strong { color: var(--grey-900); }
+
+    /* ── CARDS & CALLOUTS ── */
+    .card {
+      background: white;
+      border: 1px solid var(--grey-200);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .callout {
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      border-left: 4px solid;
+    }
+    .callout-green { background: var(--green-light); border-color: var(--green); }
+    .callout-blue { background: var(--blue-light); border-color: var(--blue); }
+    .callout-amber { background: var(--amber-light); border-color: var(--amber); }
+    .callout-red { background: var(--red-light); border-color: var(--red); }
+    .callout strong { display: block; margin-bottom: 0.25rem; }
+
+    /* ── TABLES ── */
+    .table-wrap { overflow-x: auto; margin: 1rem 0 1.25rem; border-radius: var(--radius); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; background: white; font-size: 0.9rem; }
+    th {
+      background: var(--grey-800);
+      color: white;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--grey-200); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--grey-50); }
+
+    /* ── ROLE CARDS ── */
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .role-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      border-top: 4px solid;
+      box-shadow: var(--shadow);
+    }
+    .role-card.auditor { border-color: #10b981; }
+    .role-card.coordinator { border-color: var(--blue); }
+    .role-card.la_admin { border-color: #7c3aed; }
+    .role-card.system_admin { border-color: var(--red); }
+    .role-card h4 { margin: 0 0 0.5rem; font-size: 1rem; }
+    .role-card .role-tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .auditor .role-tag { background: #d1fae5; color: #065f46; }
+    .coordinator .role-tag { background: #dbeafe; color: #1e40af; }
+    .la_admin .role-tag { background: #ede9fe; color: #4c1d95; }
+    .system_admin .role-tag { background: #fee2e2; color: #991b1b; }
+    .role-card ul { font-size: 0.85rem; margin-left: 1rem; }
+
+    /* ── STEP FLOW ── */
+    .steps { counter-reset: step; margin: 1rem 0; }
+    .step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: flex-start;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      background: var(--green);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .step-body { flex: 1; padding-top: 0.2rem; }
+    .step-body strong { display: block; margin-bottom: 0.2rem; }
+
+    /* ── STATUS BADGES ── */
+    .status { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 99px; }
+    .status-working { background: #d1fae5; color: #065f46; }
+    .status-pending { background: var(--amber-light); color: #92400e; }
+    .status-missing { background: var(--red-light); color: #991b1b; }
+    .status-future { background: #ede9fe; color: #4c1d95; }
+
+    /* ── MERMAID ── */
+    .diagram-wrap {
+      background: white;
+      border: 1px solid var(--grey-200);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.25rem 0;
+      overflow-x: auto;
+      box-shadow: var(--shadow);
+    }
+    .diagram-caption {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--grey-600);
+      margin-top: 0.75rem;
+      font-style: italic;
+    }
+
+    /* ── FEATURE PILLS ── */
+    .pill-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; }
+    .pill {
+      padding: 0.3rem 0.75rem;
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: var(--green-light);
+      color: var(--green-dark);
+      border: 1px solid #bbf7d0;
+    }
+    .pill.future { background: #ede9fe; color: #4c1d95; border-color: #ddd6fe; }
+
+    /* ── SECTION INTRO ── */
+    .section-intro {
+      background: linear-gradient(135deg, var(--green-dark), var(--green));
+      color: white;
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-intro h2 { color: white; border-bottom-color: rgba(255,255,255,0.3); }
+    .section-intro p { color: rgba(255,255,255,0.9); }
+
+    /* ── PRINT ── */
+    @media print {
+      .app-header, .nav-outer { position: static; }
+      .tab-panel { display: block !important; page-break-before: always; }
+      .tab-panel:first-child { page-break-before: auto; }
+    }
+
+    @media (max-width: 600px) {
+      .app-header { padding: 1.25rem 1rem; }
+      .content-area { padding: 1.25rem 1rem 3rem; }
+      .role-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>🚶 Walking Audit App <span class="badge badge-green">v1.0</span></h1>
+  <p>User Guide &amp; Feature Manual — April 2026</p>
+</header>
+
+<div class="nav-outer">
+  <div class="nav-tabs" id="navTabs">
+    <div class="nav-tab active" data-tab="overview">Overview</div>
+    <div class="nav-tab" data-tab="accounts">Accounts &amp; Roles</div>
+    <div class="nav-tab" data-tab="auth">Login &amp; Auth</div>
+    <div class="nav-tab" data-tab="dashboard">Dashboard</div>
+    <div class="nav-tab" data-tab="routes">Routes &amp; Maps</div>
+    <div class="nav-tab" data-tab="audits">Conducting an Audit</div>
+    <div class="nav-tab" data-tab="photos">Photos &amp; Evidence</div>
+    <div class="nav-tab" data-tab="issues">Issues &amp; Observations</div>
+    <div class="nav-tab" data-tab="reports">Reports &amp; Data</div>
+    <div class="nav-tab" data-tab="roadmap">Future Roadmap</div>
+  </div>
+</div>
+
+<div class="content-area">
+
+  <!-- ════════ OVERVIEW ════════ -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="section-intro">
+      <h2>What Is the Walking Audit App?</h2>
+      <p>A digital tool for conducting structured walkability assessments of pedestrian infrastructure — built for the Irish National Transport Authority's Universal Design Walkability Audit framework.</p>
+    </div>
+
+    <div class="card">
+      <h3>Purpose</h3>
+      <p>The Walking Audit App enables community groups, local authorities, school travel planners, and coordinators to conduct standardised assessments of walking routes — recording GPS-tagged observations, photographic evidence, and scored assessments across 7 key categories, then generating professional PDF reports for submission to local authorities.</p>
+    </div>
+
+    <h3>Who Uses It?</h3>
+    <p>Four distinct user types interact with the platform at different stages of the audit lifecycle:</p>
+    <div class="role-grid">
+      <div class="role-card auditor">
+        <div class="role-tag">Auditor</div>
+        <h4>Field Worker</h4>
+        <ul>
+          <li>Conducts on-the-ground audits</li>
+          <li>Logs issues with GPS + photos</li>
+          <li>Scores each section</li>
+          <li>Works offline on mobile</li>
+        </ul>
+      </div>
+      <div class="role-card coordinator">
+        <div class="role-tag">Coordinator</div>
+        <h4>Team Lead</h4>
+        <ul>
+          <li>Defines walking routes</li>
+          <li>Assigns audits to teams</li>
+          <li>Reviews submissions</li>
+          <li>Generates reports</li>
+        </ul>
+      </div>
+      <div class="role-card la_admin">
+        <div class="role-tag">LA Admin</div>
+        <h4>Local Authority</h4>
+        <ul>
+          <li>Reviews audit findings</li>
+          <li>Responds to recommendations</li>
+          <li>Tracks implementation</li>
+          <li>Downloads official reports</li>
+        </ul>
+      </div>
+      <div class="role-card system_admin">
+        <div class="role-tag">System Admin</div>
+        <h4>Platform Admin</h4>
+        <ul>
+          <li>Full user management</li>
+          <li>All data access</li>
+          <li>System configuration</li>
+          <li>Analytics overview</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>The 7 Audit Categories</h3>
+    <p>Every audit scores the walking route across seven standardised sections (matching the NTA Universal Design framework):</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Section</th><th>What It Covers</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Footpaths</strong></td><td>Width, surface condition, kerb drops, obstacles, continuity</td></tr>
+          <tr><td>2</td><td><strong>Facilities</strong></td><td>Seating, shelters, public toilets, bins, water fountains</td></tr>
+          <tr><td>3</td><td><strong>Crossing the Road</strong></td><td>Pedestrian crossings, signal timing, tactile paving, islands</td></tr>
+          <tr><td>4</td><td><strong>Road User Behaviour</strong></td><td>Driver compliance, pavement parking, cycling on footpaths</td></tr>
+          <tr><td>5</td><td><strong>Safety</strong></td><td>Lighting, sight lines, blind spots, crime concern, traffic speed</td></tr>
+          <tr><td>6</td><td><strong>Look &amp; Feel</strong></td><td>Greenery, cleanliness, street art, attractiveness, heritage</td></tr>
+          <tr><td>7</td><td><strong>School Gates</strong></td><td>Drop-off behaviour, pedestrian space, school zone safety (where applicable)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Technology Stack</h3>
+    <div class="pill-row">
+      <span class="pill">Next.js 14 (App Router)</span>
+      <span class="pill">React 18</span>
+      <span class="pill">TypeScript</span>
+      <span class="pill">Tailwind CSS</span>
+      <span class="pill">Redux Toolkit</span>
+      <span class="pill">Supabase PostgreSQL</span>
+      <span class="pill">Vercel (hosting)</span>
+      <span class="pill">Google Maps API</span>
+      <span class="pill">Google OAuth</span>
+      <span class="pill">JWT Auth</span>
+    </div>
+
+    <div class="callout callout-green">
+      <strong>✅ Live App</strong>
+      Access the app at: <a href="https://walking-audit-app-frontend.vercel.app" target="_blank"><strong>walking-audit-app-frontend.vercel.app</strong></a>
+    </div>
+  </div>
+
+  <!-- ════════ ACCOUNTS & ROLES ════════ -->
+  <div class="tab-panel" id="tab-accounts">
+    <div class="section-intro">
+      <h2>User Accounts &amp; Roles</h2>
+      <p>The system supports four role levels with distinct permissions and views. Access is controlled via JWT tokens — every API request is authenticated.</p>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph TD
+    A[New User] --> B{How they join}
+    B -->|Self-register| C[auditor role]
+    B -->|Invited by Coordinator| D[auditor or coordinator]
+    B -->|LA account created| E[la_admin role]
+    B -->|System setup| F[system_admin role]
+
+    C --> G[Can conduct audits\nLog issues & photos\nView own reports]
+    D --> H[Can create routes\nAssign audits\nReview submissions\nGenerate reports]
+    E --> I[View all audits\nRespond to recommendations\nTrack implementation]
+    F --> J[Full system access\nUser management\nAll data & analytics]
+
+    style C fill:#d1fae5,stroke:#10b981
+    style D fill:#dbeafe,stroke:#2563eb
+    style E fill:#ede9fe,stroke:#7c3aed
+    style F fill:#fee2e2,stroke:#dc2626
+      </div>
+      <p class="diagram-caption">User role assignment flow</p>
+    </div>
+
+    <h3>Role Permissions Matrix</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>Auditor</th>
+            <th>Coordinator</th>
+            <th>LA Admin</th>
+            <th>System Admin</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Register / login</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>Conduct an audit</td><td>✅</td><td>✅</td><td>—</td><td>✅</td></tr>
+          <tr><td>Log issues &amp; photos</td><td>✅</td><td>✅</td><td>—</td><td>✅</td></tr>
+          <tr><td>Create / edit routes</td><td>—</td><td>✅</td><td>—</td><td>✅</td></tr>
+          <tr><td>Assign audits to users</td><td>—</td><td>✅</td><td>—</td><td>✅</td></tr>
+          <tr><td>Review &amp; approve audits</td><td>—</td><td>✅</td><td>—</td><td>✅</td></tr>
+          <tr><td>Generate PDF reports</td><td>Own only</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>Respond to recommendations</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+          <tr><td>View all county data</td><td>—</td><td>Own county</td><td>Own county</td><td>✅</td></tr>
+          <tr><td>Manage users</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+          <tr><td>View analytics dashboard</td><td>Limited</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>User Profile Fields</h3>
+    <p>Each account stores:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Description</th><th>Required?</th></tr></thead>
+        <tbody>
+          <tr><td>Email</td><td>Unique login identifier</td><td>✅ Yes</td></tr>
+          <tr><td>Name</td><td>Full display name</td><td>✅ Yes</td></tr>
+          <tr><td>Organisation</td><td>School, community group, LA name</td><td>Optional</td></tr>
+          <tr><td>County</td><td>Irish county — scopes data access</td><td>Optional</td></tr>
+          <tr><td>Role</td><td>auditor / coordinator / la_admin / system_admin</td><td>✅ Auto-set</td></tr>
+          <tr><td>Profile Photo</td><td>Avatar image URL</td><td>Optional</td></tr>
+          <tr><td>Google ID</td><td>Set when using Google Sign-In</td><td>Optional</td></tr>
+          <tr><td>Notification Prefs</td><td>Email / push notification settings</td><td>Default: email on</td></tr>
+          <tr><td>Audit Count</td><td>Total audits completed (auto-tracked)</td><td>Auto</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-amber">
+      <strong>⚠️ Current State</strong>
+      All users self-registering receive the <code>auditor</code> role by default. Role promotion to coordinator, la_admin, or system_admin must currently be done by a system admin directly in the database. A role management UI is planned for Phase 2.
+    </div>
+  </div>
+
+  <!-- ════════ AUTH ════════ -->
+  <div class="tab-panel" id="tab-auth">
+    <div class="section-intro">
+      <h2>Login &amp; Authentication</h2>
+      <p>The app supports two sign-in methods: email/password and Google Sign-In (OAuth 2.0). Both issue JWT access + refresh tokens on success.</p>
+    </div>
+
+    <h3>Email / Password Login Flow</h3>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+sequenceDiagram
+    participant U as User (Browser)
+    participant FE as Next.js Frontend
+    participant API as /api/v1/auth/login
+    participant DB as Supabase DB
+
+    U->>FE: Enter email + password, click Sign In
+    FE->>API: POST {email, password}
+    API->>DB: SELECT * FROM users WHERE email = ?
+    DB-->>API: User row (or null)
+    alt User not found
+        API-->>FE: 401 Invalid email or password
+        FE-->>U: Show error message
+    else User found
+        API->>API: bcrypt.compare(password, hash)
+        alt Password invalid
+            API-->>FE: 401 Invalid email or password
+            FE-->>U: Show error message
+        else Password valid
+            API->>API: Generate JWT access token (24h)
+            API->>API: Generate JWT refresh token (30d)
+            API->>DB: UPDATE last_login timestamp
+            API-->>FE: {user, tokens: {accessToken, refreshToken}}
+            FE->>FE: Store tokens in Redux + localStorage
+            FE-->>U: Redirect to /dashboard
+        end
+    end
+      </div>
+      <p class="diagram-caption">Email/password authentication sequence</p>
+    </div>
+
+    <h3>Google Sign-In Flow</h3>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant G as Google OAuth
+    participant FE as Frontend
+    participant API as /api/v1/auth/google
+    participant DB as Supabase DB
+
+    U->>FE: Click "Continue with Google"
+    FE->>G: Open Google OAuth popup
+    G-->>U: Google login dialog
+    U->>G: Select Google account
+    G-->>FE: ID Token (credential string)
+    FE->>API: POST {credential: id_token}
+    API->>G: Verify ID token (google-auth-library)
+    G-->>API: Decoded payload {sub, email, name, picture}
+    API->>DB: SELECT * FROM users WHERE google_id = ? OR email = ?
+    alt Existing user
+        API->>DB: UPDATE google_id, avatar_url, last_login
+    else New user
+        API->>DB: INSERT new user (email_verified=true, role=auditor)
+    end
+    API->>API: Generate JWT tokens
+    API-->>FE: {user, tokens}
+    FE->>FE: Store in Redux + localStorage
+    FE-->>U: Redirect to /dashboard
+      </div>
+      <p class="diagram-caption">Google Sign-In OAuth flow</p>
+    </div>
+
+    <h3>Token Management</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Token</th><th>Lifetime</th><th>Storage</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Access Token (JWT)</td><td>24 hours</td><td>Redux store + localStorage</td><td>Authenticate every API request via <code>Authorization: Bearer</code></td></tr>
+          <tr><td>Refresh Token (JWT)</td><td>30 days</td><td>localStorage</td><td>Exchange for new access token when expired — no re-login needed</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Registration Flow</h3>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Fill Registration Form</strong>Name, email, password, optional organisation and county</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Password Hashed</strong>bcrypt (12 rounds) — password never stored in plaintext</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>User Created</strong>UUID auto-generated, role set to <code>auditor</code>, <code>email_verified: true</code> (verification disabled in current config)</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>JWT Tokens Issued</strong>Same tokens as login — user is immediately logged in after registration</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Redirected to Dashboard</strong>Ready to start auditing</div></div>
+    </div>
+
+    <h3>Password Reset</h3>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Request Reset</strong>Enter email at <code>/auth/forgot-password</code></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Reset Token Generated</strong>Cryptographically random 32-byte token, valid 1 hour</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Email Sent</strong>Reset link emailed via SendGrid (when configured)</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>New Password Set</strong>Token verified, new bcrypt hash stored, token cleared</div></div>
+    </div>
+
+    <div class="callout callout-blue">
+      <strong>ℹ️ Current Deployment State</strong>
+      Email verification is disabled (<code>ENABLE_EMAIL_VERIFICATION=false</code>). All registered users are immediately active. Google Sign-In is deployed but requires <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> to be set in Vercel.
+    </div>
+  </div>
+
+  <!-- ════════ DASHBOARD ════════ -->
+  <div class="tab-panel" id="tab-dashboard">
+    <div class="section-intro">
+      <h2>Dashboard</h2>
+      <p>The central hub after login — showing audit activity, quick stats, and navigation to all features.</p>
+    </div>
+
+    <h3>Dashboard Components</h3>
+    <div class="card">
+      <h4>📊 Stats Summary Bar</h4>
+      <p>Displays at a glance: total audits completed, active routes, open issues, and pending recommendations. Numbers update in real-time as data changes.</p>
+    </div>
+    <div class="card">
+      <h4>🗺️ Recent Activity Feed</h4>
+      <p>A timeline of the last 10 audit events — including new audits started, issues logged, photos uploaded, and reports generated.</p>
+    </div>
+    <div class="card">
+      <h4>📋 My Audits</h4>
+      <p>A filterable list of audits assigned to or created by the current user. Status indicators (Draft, In Progress, Completed, Reviewed, Archived) shown inline.</p>
+    </div>
+    <div class="card">
+      <h4>🚀 Quick Actions</h4>
+      <p>One-click access to: Start New Audit, Browse Routes, View Reports, Upload Photos.</p>
+    </div>
+
+    <h3>Audit Status Lifecycle</h3>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+stateDiagram-v2
+    [*] --> Draft : Coordinator creates audit
+    Draft --> InProgress : Auditor begins walkthrough
+    InProgress --> Completed : Auditor submits
+    Completed --> Reviewed : Coordinator reviews & approves
+    Reviewed --> Archived : After reporting period
+    InProgress --> Draft : Coordinator sends back for revision
+    Completed --> InProgress : Coordinator requests more data
+      </div>
+      <p class="diagram-caption">Audit lifecycle state machine</p>
+    </div>
+
+    <h3>Role-Based Views</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Role</th><th>What They See on Dashboard</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Auditor</strong></td><td>Their own audits only, assigned routes, issue summary for their work</td></tr>
+          <tr><td><strong>Coordinator</strong></td><td>All audits they manage, team activity, pending reviews, route health</td></tr>
+          <tr><td><strong>LA Admin</strong></td><td>County-wide audit summary, open recommendations, implementation tracker</td></tr>
+          <tr><td><strong>System Admin</strong></td><td>Platform-wide analytics, all users, all counties, system health</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════════ ROUTES & MAPS ════════ -->
+  <div class="tab-panel" id="tab-routes">
+    <div class="section-intro">
+      <h2>Walking Routes &amp; Maps</h2>
+      <p>Routes are the geographic backbone of the app. Every audit is conducted on a defined route. Google Maps provides the visual interface for browsing, selecting, and navigating routes.</p>
+    </div>
+
+    <h3>What Is a Route?</h3>
+    <p>A route is a defined walking path stored as a GeoJSON geometry with metadata including distance, surface type, elevation data, public transport proximity, and historical audit scores.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Route Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Name &amp; Description</td><td>Human-readable title and description</td></tr>
+          <tr><td>Town / City / County</td><td>Geographic classification</td></tr>
+          <tr><td>GeoJSON Geometry</td><td>The actual path coordinates (LineString)</td></tr>
+          <tr><td>Distance (metres)</td><td>Calculated from geometry</td></tr>
+          <tr><td>Bounding Box</td><td>Map viewport for auto-zoom</td></tr>
+          <tr><td>Elevation (min/max/avg gradient)</td><td>Terrain analysis for accessibility scoring</td></tr>
+          <tr><td>Surface Type</td><td>Tarmac, cobblestone, gravel, etc.</td></tr>
+          <tr><td>Lighting</td><td>Street lighting quality assessment</td></tr>
+          <tr><td>Has Public Transport</td><td>Flag + distance to nearest bus/rail stop</td></tr>
+          <tr><td>Route Type</td><td>School route, leisure, commuter, etc.</td></tr>
+          <tr><td>Permeability Score</td><td>How connected the route is to the wider network</td></tr>
+          <tr><td>Avg Score</td><td>Mean audit score across all completed audits</td></tr>
+          <tr><td>Audit Count</td><td>Number of times route has been audited</td></tr>
+          <tr><td>Is Featured</td><td>Pinned to top of browse list</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>How Maps Work</h3>
+    <p>The app uses the <strong>Google Maps JavaScript API</strong> to render interactive maps throughout the application:</p>
+
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph LR
+    A[Google Maps JS API\nNEXT_PUBLIC_GOOGLE_MAPS_API_KEY] --> B[Route Browser Map\nDisplays all routes as polylines]
+    A --> C[Audit Map View\nActive route + issue pins]
+    A --> D[Issue Logger\nTap map to pin exact GPS location]
+    A --> E[Report Map\nStatic screenshot in PDF]
+
+    B --> F[User clicks route]
+    F --> G[Route detail panel slides in]
+    G --> H[Start Audit button]
+
+    C --> I[Real-time GPS tracking\nuser's position shown]
+    I --> J[Tap to log issue at current location]
+
+    style A fill:#4285F4,color:white,stroke:#4285F4
+      </div>
+      <p class="diagram-caption">Google Maps integration points across the app</p>
+    </div>
+
+    <h3>How Someone Selects a Route</h3>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Open Route Browser</strong>Navigate to <em>Routes</em> from the dashboard. An interactive map loads showing all published routes as coloured polylines.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Filter Routes</strong>Filter by county, route type (school/leisure/commuter), or search by name. Featured routes appear at the top.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Tap a Route</strong>Clicking a route on the map or the list opens the Route Detail panel — showing distance, elevation, surface type, past audit scores, and photos.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Review Route Info</strong>The map auto-zooms to the route's bounding box. Previous issue pins and photos from past audits are visible.</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Start Audit</strong>Click <em>Start Audit on This Route</em>. A new audit record is created with status <em>Draft</em>, linked to this route and the current user.</div></div>
+    </div>
+
+    <h3>Creating a New Route (Coordinators Only)</h3>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Open Route Creator</strong>Routes → New Route</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Draw the Path</strong>Use the map drawing tool to trace the walking route by clicking waypoints on the Google Map.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Fill in Metadata</strong>Name, description, county, route type, surface, lighting, transport links.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Publish Route</strong>Set <code>is_public = true</code>. The route appears in the browser for auditors to select.</div></div>
+    </div>
+
+    <div class="callout callout-amber">
+      <strong>⚠️ Maps Config Required</strong>
+      Google Maps requires <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to be set in Vercel Environment Variables. Without this, the map component will not render. Add it at: Vercel → Project → Settings → Environment Variables.
+    </div>
+  </div>
+
+  <!-- ════════ CONDUCTING AN AUDIT ════════ -->
+  <div class="tab-panel" id="tab-audits">
+    <div class="section-intro">
+      <h2>Conducting an Audit</h2>
+      <p>An audit is a structured walkthrough of a route, scored across 7 categories. Audits are designed to be conducted on mobile, outdoors, with or without internet connection.</p>
+    </div>
+
+    <h3>Full Audit Workflow</h3>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+flowchart TD
+    A[Select route from map] --> B[Create audit record\nStatus: Draft]
+    B --> C[Fill audit details\nDate, weather, time, team]
+    C --> D[Begin walkthrough\nStatus: In Progress]
+    D --> E{At each point\nalong the route}
+    E --> F[Log observation\nCategory + severity]
+    E --> G[Take / upload photo\nAuto-tags GPS location]
+    E --> H[Score this section\n1-5 rating per category]
+    F --> E
+    G --> E
+    H --> E
+    E -->|End of route| I[Complete all 7 sections]
+    I --> J[Add recommendations]
+    J --> K[Submit for review\nStatus: Completed]
+    K --> L{Coordinator reviews}
+    L -->|Approved| M[Status: Reviewed\nPDF report generated]
+    L -->|Needs changes| N[Returned to auditor\nStatus: In Progress]
+    M --> O[Report sent to LA Admin]
+
+    style D fill:#fef3c7,stroke:#d97706
+    style M fill:#d1fae5,stroke:#10b981
+    style K fill:#dbeafe,stroke:#2563eb
+      </div>
+      <p class="diagram-caption">Complete audit lifecycle from selection to report</p>
+    </div>
+
+    <h3>Audit Setup Details</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Audit Date</td><td>Date the walkthrough takes place</td></tr>
+          <tr><td>Start / End Time</td><td>Duration tracking</td></tr>
+          <tr><td>Weather</td><td>Conditions on the day (affects observations)</td></tr>
+          <tr><td>Temperature</td><td>°C (optional)</td></tr>
+          <tr><td>Is School Route?</td><td>Enables the School Gates section and school name field</td></tr>
+          <tr><td>Peak Time?</td><td>Whether conducted during school/commute peak</td></tr>
+          <tr><td>Participants</td><td>Other team members added via <code>audit_participants</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Scoring System</h3>
+    <p>Each section is scored on a <strong>1–5 scale</strong>. Scores feed into the overall audit score and are used in PDF report generation and trend analytics.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Score</th><th>Meaning</th><th>Colour</th></tr></thead>
+        <tbody>
+          <tr><td>5</td><td>Excellent — meets all accessibility standards</td><td>🟢 Green</td></tr>
+          <tr><td>4</td><td>Good — minor issues only</td><td>🔵 Blue</td></tr>
+          <tr><td>3</td><td>Adequate — some barriers present</td><td>🟡 Amber</td></tr>
+          <tr><td>2</td><td>Poor — significant barriers</td><td>🟠 Orange</td></tr>
+          <tr><td>1</td><td>Very Poor — major accessibility failure</td><td>🔴 Red</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Offline Capability</h3>
+    <div class="callout callout-blue">
+      <strong>ℹ️ Offline-First Design</strong>
+      The <code>sync_queue</code> table acts as a buffer for all writes made without internet connectivity. When connectivity resumes, queued operations sync automatically. This allows auditors to conduct full walkthroughs in areas with no mobile signal (a common scenario on rural routes in Ireland).
+    </div>
+
+    <h3>Multi-User Audits</h3>
+    <p>Audits support multiple participants via the <code>audit_participants</code> table. This allows a team of auditors to work on different sections simultaneously, with all observations consolidated under one audit record.</p>
+  </div>
+
+  <!-- ════════ PHOTOS ════════ -->
+  <div class="tab-panel" id="tab-photos">
+    <div class="section-intro">
+      <h2>Photos &amp; Evidence</h2>
+      <p>Photographic evidence is central to the audit process. Every issue can have photos attached. Photos are automatically geo-tagged and linked to the relevant section of the route.</p>
+    </div>
+
+    <h3>Photo Capture Flow</h3>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+flowchart LR
+    A[Auditor identifies issue] --> B{Device type}
+    B -->|Mobile| C[Open camera\nor choose from gallery]
+    B -->|Desktop| D[Upload image file\nJPEG/PNG/HEIC]
+    C --> E[Photo captured]
+    D --> E
+    E --> F[GPS coordinates\nauto-captured from device]
+    F --> G[Photo compressed\nSharp or Cloudinary]
+    G --> H[Uploaded to storage\nSupabase Storage / Cloudinary]
+    H --> I[URL saved to\nphotos table in DB]
+    I --> J[Linked to audit\nand/or specific issue]
+    J --> K[Appears in audit\nphoto gallery]
+    K --> L[Included in PDF report]
+
+    style H fill:#dbeafe,stroke:#2563eb
+    style G fill:#fef3c7,stroke:#d97706
+      </div>
+      <p class="diagram-caption">Photo capture, upload, and storage flow</p>
+    </div>
+
+    <h3>Photo Metadata Stored</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>URL</td><td>Location in storage bucket</td></tr>
+          <tr><td>Thumbnail URL</td><td>Compressed preview version</td></tr>
+          <tr><td>Latitude / Longitude</td><td>GPS coordinates from device</td></tr>
+          <tr><td>Altitude</td><td>Height above sea level (where available)</td></tr>
+          <tr><td>Heading</td><td>Camera direction (degrees)</td></tr>
+          <tr><td>Audit ID</td><td>Which audit this photo belongs to</td></tr>
+          <tr><td>Issue ID</td><td>Specific issue this photo documents (optional)</td></tr>
+          <tr><td>Section</td><td>Which of the 7 audit sections</td></tr>
+          <tr><td>Caption</td><td>Auditor description of what's shown</td></tr>
+          <tr><td>Uploaded By</td><td>User ID of uploader</td></tr>
+          <tr><td>File Size / Type</td><td>Original file metadata</td></tr>
+          <tr><td>Is Cover Photo</td><td>Flag for the main route/audit image</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Current Status &amp; Fix Required</h3>
+    <div class="callout callout-red">
+      <strong>❌ Photo Uploads Not Working</strong>
+      Sharp (image processing library) was compiled on Windows but Vercel runs Linux x64. The binary is incompatible. <strong>Fix required:</strong> Either replace Sharp with Cloudinary's server-side transformation, or rebuild Sharp for Linux during deployment. See README for exact fix steps.
+    </div>
+
+    <h3>Ideal State — How Photos Should Work</h3>
+    <p>Once photo uploads are fixed, the intended experience is:</p>
+    <ol>
+      <li>Auditor taps <em>Add Photo</em> while on an active audit</li>
+      <li>Camera opens directly (on mobile) — single tap to capture</li>
+      <li>Photo is compressed to &lt;500KB before upload</li>
+      <li>GPS coordinates are embedded from the device</li>
+      <li>Photo is linked to the current GPS location on the audit map</li>
+      <li>A thumbnail appears instantly in the audit view</li>
+      <li>All photos appear in the PDF report with their map position</li>
+    </ol>
+  </div>
+
+  <!-- ════════ ISSUES ════════ -->
+  <div class="tab-panel" id="tab-issues">
+    <div class="section-intro">
+      <h2>Issues &amp; Observations</h2>
+      <p>Issues are the core data unit of a walking audit — specific problems observed at a particular GPS location during a route walkthrough.</p>
+    </div>
+
+    <h3>Issue Categories</h3>
+    <div class="pill-row">
+      <span class="pill">Footpath</span>
+      <span class="pill">Crossing</span>
+      <span class="pill">Obstacle</span>
+      <span class="pill">Safety</span>
+      <span class="pill">Lighting</span>
+      <span class="pill">Signage</span>
+      <span class="pill">Facility</span>
+      <span class="pill">Traffic</span>
+      <span class="pill">Accessibility</span>
+      <span class="pill">Maintenance</span>
+      <span class="pill">Other</span>
+    </div>
+
+    <h3>Issue Severity Levels</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Severity</th><th>Description</th><th>Response Expected</th></tr></thead>
+        <tbody>
+          <tr><td>🔴 Critical</td><td>Immediate safety risk (broken footpath, dangerous crossing)</td><td>Urgent LA response required</td></tr>
+          <tr><td>🟠 High</td><td>Significant barrier to walking (missing kerb drop, no lighting)</td><td>Priority recommendation</td></tr>
+          <tr><td>🟡 Medium</td><td>Inconvenience (uneven surface, poor signage)</td><td>Include in routine maintenance</td></tr>
+          <tr><td>🔵 Low</td><td>Minor issue (faded markings, overgrown hedge)</td><td>Log for future planning</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Issue Lifecycle</h3>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+stateDiagram-v2
+    [*] --> Open : Auditor logs issue
+    Open --> Verified : Coordinator confirms issue
+    Open --> Rejected : Issue marked invalid
+    Verified --> LANotified : Report sent to Local Authority
+    LANotified --> LAacknowledged : LA confirms receipt
+    LAacknowledged --> InProgress : LA begins work
+    InProgress --> Resolved : Work completed
+    Resolved --> Closed : Coordinator verifies resolution
+    Resolved --> Reopened : Issue persists / recurs
+    Reopened --> InProgress
+      </div>
+      <p class="diagram-caption">Issue resolution lifecycle — from observation to closure</p>
+    </div>
+
+    <h3>Logging an Issue</h3>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Tap "Add Issue"</strong>Available on the active audit map view at any point along the route</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Location Auto-Set</strong>GPS coordinates captured from device. Can also tap a specific point on the map to override location.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Select Category &amp; Severity</strong>Choose from 11 categories and 4 severity levels</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Write Description</strong>Free-text description of the problem observed</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Attach Photos</strong>One or more photos documenting the issue</div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Save Issue</strong>Issue saved locally (synced when online). Pin appears on audit map.</div></div>
+    </div>
+
+    <h3>Recommendations</h3>
+    <p>Each issue can have one or more <strong>Recommendations</strong> attached — specific actions suggested for the Local Authority to address the issue. The LA Admin can then respond to each recommendation with a status update, timeline, and notes.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Recommendation Status</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Pending</td><td>Submitted, awaiting LA response</td></tr>
+          <tr><td>Under Review</td><td>LA is assessing the recommendation</td></tr>
+          <tr><td>Accepted</td><td>LA will implement the recommendation</td></tr>
+          <tr><td>Declined</td><td>LA declined with reason provided</td></tr>
+          <tr><td>In Progress</td><td>Work underway</td></tr>
+          <tr><td>Implemented</td><td>Change made, issue resolved</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════════ REPORTS ════════ -->
+  <div class="tab-panel" id="tab-reports">
+    <div class="section-intro">
+      <h2>Reports &amp; Data Visualisation</h2>
+      <p>The app transforms raw audit data into structured PDF reports and visual analytics — enabling evidence-based advocacy with local authorities.</p>
+    </div>
+
+    <h3>PDF Report Generation</h3>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+flowchart LR
+    A[Coordinator triggers\nGenerate Report] --> B[API fetches audit data\nissues, photos, scores]
+    B --> C[report_metrics table\nloads cached scores]
+    C --> D[Puppeteer renders\nHTML report template]
+    D --> E[PDF generated\nwith maps, photos, charts]
+    E --> F[PDF download served\nto browser]
+    F --> G[LA Admin receives\nofficial PDF]
+
+    style D fill:#ede9fe,stroke:#7c3aed
+    style E fill:#d1fae5,stroke:#10b981
+      </div>
+      <p class="diagram-caption">PDF report generation pipeline</p>
+    </div>
+
+    <h3>What the PDF Report Contains</h3>
+    <div class="card">
+      <ul>
+        <li><strong>Cover page</strong> — Route name, audit date, coordinator name, organisation</li>
+        <li><strong>Executive summary</strong> — Overall score, key strengths and weaknesses</li>
+        <li><strong>Route map</strong> — Google Maps screenshot with all issue pins</li>
+        <li><strong>Section-by-section scores</strong> — Spider/radar chart of all 7 categories</li>
+        <li><strong>Issue log</strong> — Full list of observations with GPS coordinates, severity, photos</li>
+        <li><strong>Photo evidence</strong> — Captioned photos with location references</li>
+        <li><strong>Recommendations</strong> — Prioritised action list for the Local Authority</li>
+        <li><strong>Participant list</strong> — Who conducted the audit</li>
+        <li><strong>Baseline comparison</strong> — Score vs. previous audits of the same route</li>
+      </ul>
+    </div>
+
+    <h3>Analytics Dashboard</h3>
+    <p>The analytics section (accessible to Coordinators, LA Admins, System Admins) provides aggregate views across all audits:</p>
+
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph TD
+    A[Analytics Engine] --> B[Issue Heatmap\nGeographic density of problems]
+    A --> C[Score Trends\nRoute scores over time]
+    A --> D[Category Breakdown\nWhich sections score lowest]
+    A --> E[County Comparison\nAudit activity by county]
+    A --> F[Resolution Tracker\nIssues resolved vs open]
+    A --> G[Auditor Activity\nAudits per user / period]
+
+    style A fill:#1f2937,color:white,stroke:#1f2937
+      </div>
+      <p class="diagram-caption">Analytics module breakdown</p>
+    </div>
+
+    <h3>Data Views</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>View</th><th>Description</th><th>Who Sees It</th></tr></thead>
+        <tbody>
+          <tr><td>Issue Heatmap</td><td>Google Maps layer showing density of logged issues across all routes</td><td>All authenticated users</td></tr>
+          <tr><td>Score Radar</td><td>Spider chart of scores across 7 categories for a single audit</td><td>In each audit</td></tr>
+          <tr><td>Route Score History</td><td>Line chart showing how a route's overall score has changed over time (baseline data)</td><td>Coordinator, LA Admin</td></tr>
+          <tr><td>County Overview</td><td>Bar chart of average scores per county</td><td>LA Admin, System Admin</td></tr>
+          <tr><td>Issue Category Breakdown</td><td>Pie/bar chart of issues by type</td><td>All roles</td></tr>
+          <tr><td>Resolution Rate</td><td>% of issues resolved by Local Authority over time</td><td>LA Admin, System Admin</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Baseline Data &amp; Trend Analysis</h3>
+    <p>The <code>baseline_data</code> table stores historical measurements for each route — allowing the app to show whether conditions are improving, stable, or deteriorating over successive audits. This is the most powerful advocacy tool: showing a Local Authority that a problem was flagged 2 years ago and still isn't resolved.</p>
+  </div>
+
+  <!-- ════════ ROADMAP ════════ -->
+  <div class="tab-panel" id="tab-roadmap">
+    <div class="section-intro">
+      <h2>Future Roadmap</h2>
+      <p>The current deployment has authentication and core data structures working. Here is what's planned — from immediate fixes to long-term features.</p>
+    </div>
+
+    <h3>Immediate (To Make App Fully Functional)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Feature</th><th>Status</th><th>What's Needed</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Google Maps</td>
+            <td><span class="status status-pending">⚠️ Pending Config</span></td>
+            <td>Add <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to Vercel env vars</td>
+          </tr>
+          <tr>
+            <td>Google Sign-In</td>
+            <td><span class="status status-pending">⚠️ Pending Config</span></td>
+            <td>Add <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_ID</code> to Vercel</td>
+          </tr>
+          <tr>
+            <td>Photo Uploads</td>
+            <td><span class="status status-missing">❌ Broken</span></td>
+            <td>Replace Sharp with Cloudinary or rebuild for Linux</td>
+          </tr>
+          <tr>
+            <td>Photo Storage</td>
+            <td><span class="status status-missing">❌ Not Configured</span></td>
+            <td>Set up Supabase Storage bucket <code>audit-photos</code></td>
+          </tr>
+          <tr>
+            <td>Row Level Security</td>
+            <td><span class="status status-missing">❌ Disabled</span></td>
+            <td>Write RLS policies for all 15 tables before real users onboard</td>
+          </tr>
+          <tr>
+            <td>PDF Report</td>
+            <td><span class="status status-pending">⚠️ Untested</span></td>
+            <td>Test Puppeteer on Vercel; may need <code>@sparticuz/chromium</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Phase 2 — Enhanced Functionality</h3>
+    <div class="pill-row">
+      <span class="pill future">Role Management UI</span>
+      <span class="pill future">Email Verification</span>
+      <span class="pill future">Team Invitations</span>
+      <span class="pill future">Audit Templates</span>
+      <span class="pill future">Offline PWA Mode</span>
+      <span class="pill future">Push Notifications</span>
+      <span class="pill future">Bulk Photo Upload</span>
+      <span class="pill future">Route Comparison View</span>
+    </div>
+
+    <h3>Phase 3 — Analytics &amp; Advocacy</h3>
+    <div class="pill-row">
+      <span class="pill future">Live Issue Heatmap</span>
+      <span class="pill future">LA Portal Dashboard</span>
+      <span class="pill future">Recommendation Tracking Board</span>
+      <span class="pill future">Historical Trend Charts</span>
+      <span class="pill future">County Leaderboard</span>
+      <span class="pill future">Public Data Portal</span>
+      <span class="pill future">CSV / GIS Export</span>
+    </div>
+
+    <h3>Phase 4 — Mobile App</h3>
+    <div class="pill-row">
+      <span class="pill future">React Native App</span>
+      <span class="pill future">Native Camera Integration</span>
+      <span class="pill future">Background GPS Tracking</span>
+      <span class="pill future">Full Offline Mode</span>
+      <span class="pill future">Apple Maps / Google Maps Native</span>
+      <span class="pill future">Biometric Login</span>
+    </div>
+
+    <h3>Phase 5 — AI &amp; Automation</h3>
+    <div class="pill-row">
+      <span class="pill future">AI Photo Analysis</span>
+      <span class="pill future">Auto Issue Detection from Photos</span>
+      <span class="pill future">Automated Report Drafting</span>
+      <span class="pill future">Predictive Maintenance Scoring</span>
+      <span class="pill future">NTA API Integration</span>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="mermaid">
+gantt
+    title Walking Audit App — Release Roadmap
+    dateFormat  YYYY-MM
+    section Phase 1 Current
+    Auth & Database Fix       :done, 2026-03, 2026-04
+    Google OAuth              :done, 2026-04, 2026-04
+    section Phase 1 Remaining
+    Photo Uploads Fix         :active, 2026-04, 2026-05
+    Google Maps Config        :2026-04, 2026-04
+    RLS Security Policies     :2026-04, 2026-05
+    section Phase 2
+    Role Management UI        :2026-05, 2026-06
+    Email Verification        :2026-05, 2026-06
+    PWA Offline Mode          :2026-06, 2026-07
+    section Phase 3
+    Analytics Dashboard       :2026-07, 2026-09
+    LA Portal                 :2026-08, 2026-10
+    Public Data Portal        :2026-10, 2026-12
+    section Phase 4
+    Mobile App (React Native) :2027-01, 2027-06
+      </div>
+      <p class="diagram-caption">Approximate release roadmap — timelines indicative</p>
+    </div>
+
+    <h3>How Data Will Be Shown</h3>
+    <p>The long-term vision for data presentation includes:</p>
+    <div class="card">
+      <h4>🗺️ Public Walkability Map</h4>
+      <p>A publicly accessible map (no login required) showing aggregate audit scores by street/area — a visual "walkability index" for Ireland. Users can see how their neighbourhood rates and click through to see specific issues and improvement status.</p>
+    </div>
+    <div class="card">
+      <h4>📈 Progress Dashboard for LAs</h4>
+      <p>Each Local Authority gets a dedicated dashboard showing: number of audits conducted in their area, % of issues resolved, year-on-year score improvement, and a ranked list of streets most in need of improvement.</p>
+    </div>
+    <div class="card">
+      <h4>📊 National Statistics Portal</h4>
+      <p>Aggregated national data showing which counties have the most walkable infrastructure, common issue types across Ireland, and trends over time. Exportable as CSV or GeoJSON for academic / government use.</p>
+    </div>
+    <div class="card">
+      <h4>📱 Citizen Reporting (Phase 4+)</h4>
+      <p>A simplified public-facing version where any citizen can report a walkability issue on their street — not a full audit, but a quick pin + photo + category. These reports feed into the main database and can be promoted to full issues by coordinators.</p>
+    </div>
+  </div>
+
+</div><!-- /content-area -->
+
+<script>
+  // Tab navigation
+  const tabs = document.querySelectorAll('.nav-tab');
+  const panels = document.querySelectorAll('.tab-panel');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      tabs.forEach(t => t.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + target).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Re-render Mermaid diagrams in the newly active panel
+      if (typeof mermaid !== 'undefined') {
+        mermaid.run();
+      }
+    });
+  });
+
+  // Init Mermaid
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#dcfce7',
+      primaryTextColor: '#14532d',
+      primaryBorderColor: '#16a34a',
+      lineColor: '#374151',
+      secondaryColor: '#eff6ff',
+      tertiaryColor: '#fef3c7'
+    }
+  });
+</script>
+</body>
+</html>
