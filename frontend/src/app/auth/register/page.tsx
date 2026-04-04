@@ -2,11 +2,20 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAppDispatch } from '@/store';
+import { setCredentials } from '@/store/slices/authSlice';
 import { apiClient } from '@/lib/api';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import Link from 'next/link';
+
+interface AuthResponse {
+  user: { id: string; email: string; name: string; role: string; emailVerified: boolean };
+  tokens: { accessToken: string; refreshToken: string };
+}
 
 export default function RegisterPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -173,6 +182,42 @@ export default function RegisterPage() {
             >
               {isLoading ? 'Creating account...' : 'Create account'}
             </button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-gray-50 text-gray-500">Or sign up with</span>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={async (credentialResponse: CredentialResponse) => {
+                if (!credentialResponse.credential) return;
+                setError('');
+                setIsLoading(true);
+                try {
+                  const response = await apiClient.post<AuthResponse>('/v1/auth/google', {
+                    credential: credentialResponse.credential,
+                  });
+                  dispatch(setCredentials(response));
+                  apiClient.setToken(response.tokens.accessToken);
+                  router.push('/dashboard');
+                } catch (err: any) {
+                  setError(err.message || 'Google sign-up failed');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              onError={() => setError('Google sign-up failed')}
+              width="368"
+              theme="outline"
+              shape="rectangular"
+              text="signup_with"
+            />
           </div>
         </form>
       </div>

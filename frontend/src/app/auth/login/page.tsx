@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAppDispatch } from '@/store';
 import { setCredentials } from '@/store/slices/authSlice';
 import { apiClient } from '@/lib/api';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import Link from 'next/link';
 
 interface LoginResponse {
@@ -152,6 +153,42 @@ export default function LoginPage() {
                   'Sign in'
                 )}
               </button>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={async (credentialResponse: CredentialResponse) => {
+                  if (!credentialResponse.credential) return;
+                  setError('');
+                  setIsLoading(true);
+                  try {
+                    const response = await apiClient.post<LoginResponse>('/v1/auth/google', {
+                      credential: credentialResponse.credential,
+                    });
+                    dispatch(setCredentials(response));
+                    apiClient.setToken(response.tokens.accessToken);
+                    router.push('/dashboard');
+                  } catch (err: any) {
+                    setError(err.message || 'Google sign-in failed');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                onError={() => setError('Google sign-in failed')}
+                width="368"
+                theme="outline"
+                shape="rectangular"
+                text="signin_with"
+              />
             </div>
 
             <div className="text-center">

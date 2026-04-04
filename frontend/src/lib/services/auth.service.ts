@@ -80,18 +80,25 @@ export class AuthService {
   async login(data: LoginData) {
     const { email, password } = data
 
-    const { data: user } = await supabase
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('email', email)
       .maybeSingle()
 
+    if (userError) {
+      logger.error(`Login DB error: ${JSON.stringify(userError)}`)
+      throw new ApiError('Invalid email or password', 401)
+    }
+
     if (!user || user.deleted_at) {
+      logger.warn(`Login: user not found for email ${email}`)
       throw new ApiError('Invalid email or password', 401)
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password_hash)
     if (!isValidPassword) {
+      logger.warn(`Login: invalid password for ${email} (hash prefix: ${user.password_hash?.slice(0,7)})`)
       throw new ApiError('Invalid email or password', 401)
     }
 
@@ -190,6 +197,68 @@ export class AuthService {
 
     logger.info(`Password reset for user: ${user.email}`)
     return { message: 'Password reset successfully' }
+  }
+
+  async loginWithGoogle(data: {
+    googleId: string;
+    email: string;
+    name: string;
+    avatarUrl?: string;
+  }) {
+    const { googleId, email, name, avatarUrl } = data;
+
+    const { data: existing } = await supabase
+      .from('users')
+      .select('*')
+      .or(`google_id.eq.${googleId},email.eq.${email}`)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    let user = existing;
+
+    if (user) {
+      const updates: Record<string, unknown> = { last_login: new Date().toISOString() };
+      if (!user.google_id) updates.google_id = googleId;
+      if (avatarUrl && !user.avatar_url) updates.avatar_url = avatarUrl;
+      await supabase.from('users').update(updates).eq('id', user.id);
+    } else {
+      const { data: newUser, error } = await supabase
+        .from('users')
+        .insert({
+          email,
+          name,
+          role: 'auditor',
+          google_id: googleId,
+          avatar_url: avatarUrl ?? null,
+          email_verified: true,
+          last_login: new Date().toISOString(),
+        })
+        .select('*')
+        .single();
+
+      if (error) {
+        logger.error(`Google signup error: ${JSON.stringify(error)}`);
+        throw new ApiError(`Failed to create user: ${error.message}`, 500);
+      }
+      user = newUser;
+    }
+
+    const accessToken = this.generateAccessToken(user.id, user.email, user.role);
+    const refreshToken = this.generateRefreshToken(user.id);
+
+    logger.info(`Google login: ${user.email}`);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        emailVerified: user.email_verified,
+        avatarUrl: user.avatar_url ?? null,
+      },
+      tokens: { accessToken, refreshToken },
+    };
   }
 
   async verifyEmail(token: string) {
