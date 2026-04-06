@@ -2,33 +2,8 @@ import { supabase, toCamel } from '@/lib/supabase-admin'
 import { redis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { ApiError } from '@/lib/api-error'
-import * as admin from 'firebase-admin'
 
-function getFirebaseBucket() {
-  if (!process.env.FIREBASE_STORAGE_BUCKET) return null
-
-  if (!admin.apps.length) {
-    try {
-      const credential = process.env.FIREBASE_SERVICE_ACCOUNT
-        ? admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
-        : admin.credential.applicationDefault()
-
-      admin.initializeApp({
-        credential,
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-      })
-    } catch (error) {
-      logger.warn('Firebase Admin not initialised. Photo uploads will fail.')
-      return null
-    }
-  }
-
-  try {
-    return admin.storage().bucket()
-  } catch {
-    return null
-  }
-}
+const PHOTO_BUCKET = 'audit-photos'
 
 interface GetUploadUrlData {
   auditId: string
@@ -60,20 +35,19 @@ export class PhotoService {
       .maybeSingle()
     if (!audit) throw new ApiError('Audit not found', 404)
 
-    const bucket = getFirebaseBucket()
-    if (!bucket) throw new ApiError('Firebase Storage not configured', 503)
-
     const storagePath = `audits/${data.auditId}/photos/${Date.now()}-${data.filename}`
-    const file = bucket.file(storagePath)
 
-    const [signedUrl] = await file.getSignedUrl({
-      action: 'write',
-      expires: Date.now() + 15 * 60 * 1000,
-      contentType: data.mimeType,
-    })
+    const { data: signed, error } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .createSignedUploadUrl(storagePath)
 
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`
-    return { uploadUrl: signedUrl, storagePath, publicUrl }
+    if (error || !signed) throw new ApiError('Failed to create upload URL', 500)
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(PHOTO_BUCKET)
+      .getPublicUrl(storagePath)
+
+    return { uploadUrl: signed.signedUrl, storagePath, publicUrl }
   }
 
   async confirmUpload(userId: string, data: ConfirmUploadData) {
@@ -186,10 +160,10 @@ export class PhotoService {
     }
 
     try {
-      const bucket = getFirebaseBucket()
-      if (bucket && photo.url) {
-        const path = photo.url.split(`${bucket.name}/`)[1]
-        if (path) await bucket.file(decodeURIComponent(path)).delete()
+      if (photo.url) {
+        const urlParts = photo.url.split(`/storage/v1/object/public/${PHOTO_BUCKET}/`)
+        const storagePath = urlParts[1] ? decodeURIComponent(urlParts[1]) : null
+        if (storagePath) await supabase.storage.from(PHOTO_BUCKET).remove([storagePath])
       }
     } catch (error) {
       logger.error(`Failed to delete photo from storage: ${error}`)

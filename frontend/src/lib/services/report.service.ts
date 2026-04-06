@@ -3,7 +3,9 @@ import { logger } from '@/lib/logger'
 import { ApiError } from '@/lib/api-error'
 
 // Note: PDF generation via Puppeteer is not available on Vercel serverless.
-// Reports are generated as HTML and uploaded to Firebase Storage.
+// Reports are generated as HTML and uploaded to Supabase Storage.
+
+const REPORT_BUCKET = 'reports'
 
 export class ReportService {
   async generateReport(auditId: string) {
@@ -43,19 +45,22 @@ export class ReportService {
     let reportUrl = audit.report_pdf_url
 
     try {
-      const { default: adminModule } = await import('firebase-admin')
-      if (process.env.FIREBASE_STORAGE_BUCKET && adminModule.apps.length > 0) {
-        const bucket = adminModule.storage().bucket()
-        const fileName = `reports/${auditId}/${Date.now()}-report.html`
-        const file = bucket.file(fileName)
-        await file.save(Buffer.from(html, 'utf8'), {
-          metadata: { contentType: 'text/html' },
-          public: true,
+      const fileName = `reports/${auditId}/${Date.now()}-report.html`
+      const { error: uploadError } = await supabase.storage
+        .from(REPORT_BUCKET)
+        .upload(fileName, Buffer.from(html, 'utf8'), {
+          contentType: 'text/html',
+          upsert: true,
         })
-        reportUrl = file.publicUrl()
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from(REPORT_BUCKET)
+          .getPublicUrl(fileName)
+        reportUrl = publicUrl
       }
     } catch (error) {
-      logger.error(`Failed to upload report to Firebase: ${error}`)
+      logger.error(`Failed to upload report to Supabase Storage: ${error}`)
     }
 
     if (reportUrl) {
