@@ -55,6 +55,7 @@ export class AuthService {
         verification_token: verificationToken,
         verification_expires: verificationExpires.toISOString(),
         email_verified: process.env.ENABLE_EMAIL_VERIFICATION !== 'true',
+        updated_at: new Date().toISOString(),
       })
       .select('id, email, name, role, email_verified, created_at')
       .single()
@@ -232,6 +233,7 @@ export class AuthService {
           avatar_url: avatarUrl ?? null,
           email_verified: true,
           last_login: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select('*')
         .single();
