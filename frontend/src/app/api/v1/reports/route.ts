@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, toCamel } from '@/lib/supabase-admin'
-import { getAuthUser, unauthorized, serverError } from '@/lib/auth-helpers'
+import { getAuthUser, unauthorized } from '@/lib/auth-helpers'
 
 export async function GET(req: NextRequest) {
   const user = await getAuthUser(req)
@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
       pagination: { total, limit, offset, hasMore: offset + limit < total },
     })
   } catch {
-    return serverError()
+    console.error('[api] Unexpected error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })
   }
 }

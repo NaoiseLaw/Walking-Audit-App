@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { photoService } from '@/lib/services/photo.service'
-import { getAuthUser, unauthorized, serverError } from '@/lib/auth-helpers'
+import { getAuthUser, unauthorized } from '@/lib/auth-helpers'
 import { ApiError } from '@/lib/api-error'
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -14,7 +14,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (error instanceof ApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    return serverError()
+    console.error('[api] Unexpected error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })
   }
 }
 
@@ -29,6 +31,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (error instanceof ApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    return serverError()
+    console.error('[api] Unexpected error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })
   }
 }

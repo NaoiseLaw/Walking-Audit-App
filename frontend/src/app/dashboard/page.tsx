@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { clearCredentials } from '@/store/slices/authSlice';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -52,6 +53,7 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const token = useAppSelector((state) => state.auth.token);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -158,6 +160,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => {
+                  dispatch(clearCredentials());
                   apiClient.setToken(null);
                   router.push('/auth/login');
                 }}

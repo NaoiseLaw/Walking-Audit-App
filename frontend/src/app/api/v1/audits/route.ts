@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auditService } from '@/lib/services/audit.service'
-import { getAuthUser, unauthorized, serverError } from '@/lib/auth-helpers'
+import { getAuthUser, unauthorized } from '@/lib/auth-helpers'
 import { ApiError } from '@/lib/api-error'
 
 export async function GET(req: NextRequest) {
@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
     if (error instanceof ApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    return serverError()
+    console.error('[api] Unexpected error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })
   }
 }
 
@@ -40,6 +42,8 @@ export async function POST(req: NextRequest) {
     if (error instanceof ApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    return serverError()
+    console.error('[api] Unexpected error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })
   }
 }
