@@ -17,9 +17,7 @@ const nextConfig = {
   },
   images: {
     domains: [
-      'firebasestorage.googleapis.com',
-      'walkingaudit.appspot.com',
-      'storage.googleapis.com',
+      'uruzgfxebrounqszufto.supabase.co',
     ],
   },
   env: {
