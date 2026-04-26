@@ -89,3 +89,7 @@ docker-compose.override.yml
 .prettierignore
 .eslintignore
 
+
+# Root lockfile — not used; frontend has its own
+/package-lock.json
+/node_modules/

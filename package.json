@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Walking Audit Web Application - Digitizing NTA Walkability Audits",
   "private": true,
-  "workspaces": ["frontend"],
   "scripts": {
     "dev": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
