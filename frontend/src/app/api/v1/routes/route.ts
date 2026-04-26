@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
     if (error instanceof ApiError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    return serverError()
+    console.error('[routes POST] Unexpected error:', error)
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Failed to create route', detail: msg }, { status: 500 })
   }
 }

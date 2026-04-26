@@ -9,7 +9,9 @@ interface CreateRouteData {
   townCity: string
   county: string
   eircode?: string
-  geometry: string
+  geometry?: string
+  startPoint?: { lat: number; lng: number }
+  endPoint?: { lat: number; lng: number }
   distanceMeters?: number
   avgGradientPercent?: number
   maxGradientPercent?: number
@@ -55,6 +57,18 @@ interface UpdateRouteData {
 
 export class RouteService {
   async create(userId: string, data: CreateRouteData) {
+    // Build geometry from startPoint/endPoint if not provided directly
+    let geometry = data.geometry || null
+    if (!geometry && data.startPoint && data.endPoint) {
+      geometry = JSON.stringify({
+        type: 'LineString',
+        coordinates: [
+          [data.startPoint.lng, data.startPoint.lat],
+          [data.endPoint.lng, data.endPoint.lat],
+        ],
+      })
+    }
+
     const { data: route, error } = await supabase
       .from('routes')
       .insert({
@@ -63,7 +77,7 @@ export class RouteService {
         town_city: data.townCity,
         county: data.county,
         eircode: data.eircode,
-        geometry: data.geometry,
+        geometry,
         distance_meters: data.distanceMeters,
         avg_gradient_percent: data.avgGradientPercent,
         max_gradient_percent: data.maxGradientPercent,
@@ -85,7 +99,10 @@ export class RouteService {
       .select()
       .single()
 
-    if (error) throw new ApiError('Failed to create route', 500)
+    if (error) {
+      logger.error(`Route create error: ${JSON.stringify(error)}`)
+      throw new ApiError('Failed to create route', 500)
+    }
 
     await redis.del(`route:${route.id}`)
     logger.info(`Route created: ${route.id} by user ${userId}`)
