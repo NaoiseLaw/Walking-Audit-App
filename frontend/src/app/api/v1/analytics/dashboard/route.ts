@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const county = searchParams.get('county') || undefined
     const result = await analyticsService.getDashboardAnalytics(userId, county)
     return NextResponse.json(result)
-  } catch {
+  } catch (error) {
     console.error('[api] Unexpected error:', error)
     const msg = error instanceof Error ? error.message : String(error)
     return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })

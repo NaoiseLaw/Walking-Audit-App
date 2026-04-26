@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10
     const result = await analyticsService.getTopIssues(county, limit)
     return NextResponse.json(result)
-  } catch {
+  } catch (error) {
     console.error('[api] Unexpected error:', error)
     const msg = error instanceof Error ? error.message : String(error)
     return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })

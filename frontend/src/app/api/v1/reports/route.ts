@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       reports: toCamel(audits || []),
       pagination: { total, limit, offset, hasMore: offset + limit < total },
     })
-  } catch {
+  } catch (error) {
     console.error('[api] Unexpected error:', error)
     const msg = error instanceof Error ? error.message : String(error)
     return NextResponse.json({ error: 'Internal server error', detail: msg }, { status: 500 })
