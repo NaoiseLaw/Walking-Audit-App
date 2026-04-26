@@ -20,12 +20,12 @@ export class AnalyticsService {
       .select('id', { count: 'exact' })
       .is('deleted_at', null)
 
-    let issueQuery = supabase
+    const issueQuery = supabase
       .from('issues')
       .select('id', { count: 'exact' })
       .is('deleted_at', null)
 
-    let recQuery = supabase
+    const recQuery = supabase
       .from('recommendations')
       .select('id', { count: 'exact' })
       .is('deleted_at', null)
@@ -87,7 +87,7 @@ export class AnalyticsService {
     const cached = await redis.get(cacheKey)
     if (cached) return JSON.parse(cached)
 
-    let query = supabase
+    const query = supabase
       .from('issues')
       .select('category, audit:audits(route:routes(county))')
       .is('deleted_at', null)

@@ -8,13 +8,6 @@ const withPWA = require('next-pwa')({
 
 const nextConfig = {
   reactStrictMode: true,
-  // Disable TypeScript and ESLint checks during build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     domains: [
       'uruzgfxebrounqszufto.supabase.co',

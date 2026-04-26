@@ -5,6 +5,29 @@ import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface DashboardStats {
   overview: {
@@ -152,7 +175,7 @@ export default function DashboardPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-2 text-gray-600">
-            Welcome back, <span className="font-semibold text-gray-900">{user.name}</span>! Here's what's happening with your audits.
+            Welcome back, <span className="font-semibold text-gray-900">{user.name}</span>! Here&apos;s what&apos;s happening with your audits.
           </p>
         </div>
 
@@ -227,53 +250,57 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Charts and Activity */}
+            {/* Charts */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-8">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <svg className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Recent Activity
-                </h3>
-                <div className="space-y-4">
-                  {stats.trends.auditsByMonth.slice(-5).map((month, index) => (
-                    <div key={month.month} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                      <div className="flex items-center">
-                        <div className="h-2 w-2 bg-blue-600 rounded-full mr-3"></div>
-                        <span className="text-sm font-medium text-gray-900">{month.month}</span>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <span className="text-sm text-gray-600">{month.count} audits</span>
-                        <span className="text-xs font-medium text-blue-600">
-                          {(month.avgScore * 100).toFixed(0)}% avg
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Audits by Month</h3>
+                <Bar
+                  data={{
+                    labels: stats.trends.auditsByMonth.map((m) => m.month),
+                    datasets: [
+                      {
+                        label: 'Audits',
+                        data: stats.trends.auditsByMonth.map((m) => m.count),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                  }}
+                />
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <svg className="h-5 w-5 text-red-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  Top Issues
-                </h3>
-                <div className="space-y-4">
-                  {stats.topIssues.slice(0, 5).map((issue, index) => (
-                    <div key={issue.category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                      <div className="flex items-center">
-                        <span className="flex items-center justify-center h-6 w-6 bg-red-100 text-red-600 rounded-full text-xs font-bold mr-3">
-                          {index + 1}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900 capitalize">{issue.category.replace(/_/g, ' ')}</span>
-                      </div>
-                      <span className="text-sm font-bold text-gray-900">{issue.count}</span>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Issues</h3>
+                <Bar
+                  data={{
+                    labels: stats.topIssues.slice(0, 6).map((i) =>
+                      i.category.replace(/_/g, ' ')
+                    ),
+                    datasets: [
+                      {
+                        label: 'Count',
+                        data: stats.topIssues.slice(0, 6).map((i) => i.count),
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                      },
+                    ],
+                  }}
+                  options={{
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                  }}
+                />
               </div>
             </div>
 
