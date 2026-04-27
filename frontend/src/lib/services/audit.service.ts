@@ -75,6 +75,9 @@ export class AuditService {
       durationMinutes = Math.round((end.getTime() - start.getTime()) / 1000 / 60)
     }
 
+    const initialStatus = data.sections && data.sections.length > 0 ? 'in_progress' : 'draft'
+    const status = (data as any).status || initialStatus
+
     const { data: newAudit, error } = await supabase
       .from('audits')
       .insert({
@@ -95,7 +98,8 @@ export class AuditService {
         liked_most: data.likedMost,
         disliked_most: data.dislikedMost,
         additional_comments: data.additionalComments,
-        status: 'draft',
+        status,
+        completed_at: status === 'completed' ? new Date().toISOString() : null,
       })
       .select()
       .single()

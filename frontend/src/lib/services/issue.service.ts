@@ -6,11 +6,11 @@ import { ApiError } from '@/lib/api-error'
 interface CreateIssueData {
   auditId: string
   section: string
-  location: { latitude: number; longitude: number; accuracy?: number }
+  location?: { latitude: number; longitude: number; accuracy?: number }
   locationDescription?: string
   category: string
-  severity: string
-  title: string
+  severity?: string
+  title?: string
   description?: string
   reportedBy?: string
 }
@@ -38,7 +38,13 @@ export class IssueService {
       .maybeSingle()
     if (!audit) throw new ApiError('Audit not found', 404)
 
-    const location = `POINT(${data.location.longitude} ${data.location.latitude})`
+    const location = data.location
+      ? `POINT(${data.location.longitude} ${data.location.latitude})`
+      : null
+
+    // Default title to "<Category> issue in <Section>" if not provided
+    const title = data.title ||
+      `${data.category.charAt(0).toUpperCase() + data.category.slice(1)} issue in ${data.section.replace(/_/g, ' ')}`
 
     const { data: issue, error } = await supabase
       .from('issues')
@@ -47,10 +53,10 @@ export class IssueService {
         section: data.section,
         location,
         location_description: data.locationDescription,
-        location_accuracy_meters: data.location.accuracy,
+        location_accuracy_meters: data.location?.accuracy,
         category: data.category,
-        severity: data.severity,
-        title: data.title,
+        severity: data.severity || 'medium',
+        title,
         description: data.description,
         reported_by: data.reportedBy || null,
         la_status: 'open',

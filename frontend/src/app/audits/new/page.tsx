@@ -1,19 +1,28 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAppSelector } from '@/store/hooks';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { setRouteId } from '@/store/slices/auditSlice';
 import AuditWizard from '@/components/AuditWizard';
 
 export default function NewAuditPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dispatch = useAppDispatch();
   const token = useAppSelector((state) => state.auth.token);
 
   useEffect(() => {
     if (!token) {
       router.push('/auth/login');
+      return;
     }
-  }, [token, router]);
+    // Pre-select route if routeId is passed in query string
+    const routeId = searchParams.get('routeId');
+    if (routeId) {
+      dispatch(setRouteId(routeId));
+    }
+  }, [token, router, searchParams, dispatch]);
 
   if (!token) {
     return null;

@@ -25,9 +25,13 @@ export default function RoutesPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    apiClient.setToken(token || null);
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+    apiClient.setToken(token);
     loadRoutes();
-  }, [token]);
+  }, [token, router]);
 
   const loadRoutes = async () => {
     try {
@@ -40,6 +44,10 @@ export default function RoutesPage() {
       setIsLoading(false);
     }
   };
+
+  if (!token) {
+    return null;
+  }
 
   if (isLoading) {
     return (
