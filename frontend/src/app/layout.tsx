@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
@@ -10,12 +10,14 @@ export const metadata: Metadata = {
   title: 'Walking Audit App',
   description: 'Digitizing NTA Walkability Audits',
   manifest: '/manifest.json',
+};
+
+// Viewport must be exported separately from metadata in Next.js 14+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
   themeColor: '#0ea5e9',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
 };
 
 export default function RootLayout({
