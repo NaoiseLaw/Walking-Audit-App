@@ -148,8 +148,15 @@ export class AuditService {
     await redis.del(`audit:${newAudit.id}`)
     await redis.del(`route:${data.routeId}:audits`)
 
+    // Re-fetch to include scores written by calculateAuditScores
+    const { data: refreshed } = await supabase
+      .from('audits')
+      .select()
+      .eq('id', newAudit.id)
+      .single()
+
     logger.info(`Audit created: ${newAudit.id} by user ${userId}`)
-    return toCamel(newAudit)
+    return toCamel(refreshed || newAudit)
   }
 
   async getById(auditId: string, userId: string) {
@@ -321,8 +328,15 @@ export class AuditService {
     await redis.del(`audit:${auditId}`)
     await redis.del(`route:${updatedAudit.route_id}:audits`)
 
+    // Re-fetch to include scores written by calculateAuditScores
+    const { data: refreshed } = await supabase
+      .from('audits')
+      .select()
+      .eq('id', auditId)
+      .single()
+
     logger.info(`Audit updated: ${auditId} by user ${userId}`)
-    return toCamel(updatedAudit)
+    return toCamel(refreshed || updatedAudit)
   }
 
   async delete(auditId: string, userId: string) {
