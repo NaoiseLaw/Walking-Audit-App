@@ -1,10 +1,31 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Lazily initialised — module-level code must not throw so that
+// `next build` succeeds even when env vars are absent at build time.
+// The client is created on first use (i.e. inside an API route handler).
+let _client: SupabaseClient | null = null
 
-export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { persistSession: false },
+function getClient(): SupabaseClient {
+  if (!_client) {
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !key) {
+      throw new Error(
+        'Supabase admin credentials not configured. ' +
+        'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.'
+      )
+    }
+    _client = createClient(url, key, { auth: { persistSession: false } })
+  }
+  return _client
+}
+
+// Proxy that looks like a SupabaseClient to all callers but defers
+// construction until the first property access (inside a request handler).
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return Reflect.get(getClient(), prop)
+  },
 })
 
 /** Recursively convert snake_case object keys to camelCase */
