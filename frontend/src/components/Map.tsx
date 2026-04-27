@@ -1,7 +1,26 @@
-/// <reference types="google.maps" />
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useEffect, useRef } from 'react';
+
+// Google Maps types are loaded at runtime via script tag.
+// Declare minimal types to avoid build-time dependency on @types/google.maps.
+declare namespace google.maps {
+  class Map {
+    constructor(el: HTMLElement, opts?: any);
+    addListener(event: string, handler: any): void;
+    setCenter(center: any): void;
+    setZoom(zoom: number): void;
+  }
+  class Marker {
+    constructor(opts?: any);
+    addListener(event: string, handler: any): void;
+    setMap(map: any): void;
+  }
+  interface MapMouseEvent {
+    latLng?: { lat(): number; lng(): number };
+  }
+}
 
 interface MapProps {
   center?: { lat: number; lng: number };
