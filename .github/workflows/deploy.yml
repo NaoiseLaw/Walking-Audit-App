@@ -14,32 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      # Run all Vercel commands from repo root so that rootDirectory:frontend
-      # in the Vercel project config is resolved correctly (not doubled).
-      - name: Pull Vercel project environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: team_xVqbcuh5PXXBqKRXgUWN1QAW
-          VERCEL_PROJECT_ID: prj_kDKbHkvvTzmuzY8gKkktUb0n9r0y
-
-      - name: Build project artifacts
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: team_xVqbcuh5PXXBqKRXgUWN1QAW
-          VERCEL_PROJECT_ID: prj_kDKbHkvvTzmuzY8gKkktUb0n9r0y
-
+      # Upload source to Vercel and trigger a cloud build (same as GitHub integration).
+      # rootDirectory:frontend is applied by Vercel's cloud — no local build needed.
       - name: Deploy to production
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: team_xVqbcuh5PXXBqKRXgUWN1QAW
           VERCEL_PROJECT_ID: prj_kDKbHkvvTzmuzY8gKkktUb0n9r0y
