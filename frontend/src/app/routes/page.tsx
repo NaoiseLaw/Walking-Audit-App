@@ -96,8 +96,17 @@ export default function RoutesPage() {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Routes</h2>
-              <p className="mt-1 text-sm text-gray-600">Browse available routes</p>
+              <p className="mt-1 text-sm text-gray-600">Browse routes or create your own</p>
             </div>
+            <Link
+              href="/routes/new"
+              className="inline-flex items-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
+            >
+              <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create Route
+            </Link>
           </div>
 
           {error && (
@@ -142,7 +151,22 @@ export default function RoutesPage() {
 
           {routes.length === 0 && !isLoading && (
             <div className="text-center py-12">
-              <p className="text-gray-500">No routes found</p>
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No routes yet</h3>
+              <p className="mt-1 text-sm text-gray-500">Create your first walking route to get started.</p>
+              <div className="mt-6">
+                <Link
+                  href="/routes/new"
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Route
+                </Link>
+              </div>
             </div>
           )}
         </div>
