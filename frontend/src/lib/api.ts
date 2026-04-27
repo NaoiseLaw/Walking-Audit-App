@@ -33,10 +33,12 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: 'An error occurred',
-      }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      const body = await response.json().catch(() => null);
+      // Server returns { error: '...' } or { message: '...' }
+      const message = body?.error || body?.message || `HTTP error! status: ${response.status}`;
+      const err = new Error(message) as Error & { status: number };
+      err.status = response.status;
+      throw err;
     }
 
     return response.json();

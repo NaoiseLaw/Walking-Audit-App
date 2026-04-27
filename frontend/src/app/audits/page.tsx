@@ -43,6 +43,10 @@ export default function AuditsPage() {
       const response = await apiClient.get<{ audits: Audit[]; pagination: any }>('/v1/audits');
       setAudits(response.audits);
     } catch (err: any) {
+      if (err.status === 401) {
+        router.push('/auth/login');
+        return;
+      }
       setError(err.message || 'Failed to load audits');
     } finally {
       setIsLoading(false);

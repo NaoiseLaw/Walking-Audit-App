@@ -76,6 +76,12 @@ export default function DashboardPage() {
       const data = await apiClient.get<DashboardStats>('/v1/analytics/dashboard');
       setStats(data);
     } catch (err: any) {
+      // Expired or invalid token — clear state and go back to login
+      if (err.status === 401) {
+        dispatch(clearCredentials());
+        router.push('/auth/login');
+        return;
+      }
       setError(err.message || 'Failed to load dashboard data');
     } finally {
       setIsLoading(false);

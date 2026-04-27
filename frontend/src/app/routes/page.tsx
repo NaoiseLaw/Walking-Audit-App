@@ -39,6 +39,10 @@ export default function RoutesPage() {
       const response = await apiClient.get<{ routes: Route[] }>('/v1/routes');
       setRoutes(response.routes);
     } catch (err: any) {
+      if (err.status === 401) {
+        router.push('/auth/login');
+        return;
+      }
       setError(err.message || 'Failed to load routes');
     } finally {
       setIsLoading(false);
