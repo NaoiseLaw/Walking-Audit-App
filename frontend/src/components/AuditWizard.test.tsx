@@ -59,7 +59,7 @@ describe('AuditWizard', () => {
       </Provider>
     );
 
-    expect(screen.getByText('Create Audit')).toBeInTheDocument();
+    expect(screen.getByText('Create New Audit')).toBeInTheDocument();
   });
 
   it('should show route selection on first step', () => {
