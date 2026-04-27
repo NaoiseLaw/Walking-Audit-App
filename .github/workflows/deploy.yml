@@ -24,23 +24,21 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
+      # Run all Vercel commands from repo root so that rootDirectory:frontend
+      # in the Vercel project config is resolved correctly (not doubled).
       - name: Pull Vercel project environment
-        working-directory: ./frontend
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
-          # org/project IDs are not secrets — from frontend/.vercel/project.json
           VERCEL_ORG_ID: team_xVqbcuh5PXXBqKRXgUWN1QAW
           VERCEL_PROJECT_ID: prj_kDKbHkvvTzmuzY8gKkktUb0n9r0y
 
       - name: Build project artifacts
-        working-directory: ./frontend
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: team_xVqbcuh5PXXBqKRXgUWN1QAW
           VERCEL_PROJECT_ID: prj_kDKbHkvvTzmuzY8gKkktUb0n9r0y
 
       - name: Deploy to production
-        working-directory: ./frontend
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: team_xVqbcuh5PXXBqKRXgUWN1QAW
