@@ -175,6 +175,15 @@ export class AnalyticsService {
 
     if (!route) throw new ApiError('Route not found', 404)
 
+    // Get audit IDs for this route (all statuses — used for issue/rec counts)
+    const { data: routeAudits } = await supabase
+      .from('audits')
+      .select('id')
+      .eq('route_id', routeId)
+      .is('deleted_at', null)
+
+    const auditIds = (routeAudits || []).map((a: any) => a.id as string)
+
     const { count: auditCount } = await supabase
       .from('audits')
       .select('*', { count: 'exact', head: true })
@@ -182,15 +191,25 @@ export class AnalyticsService {
       .eq('status', 'completed')
       .is('deleted_at', null)
 
-    const { count: issueCount } = await supabase
-      .from('issues')
-      .select('id', { count: 'exact', head: true })
-      .is('deleted_at', null)
-
-    const { count: recCount } = await supabase
-      .from('recommendations')
-      .select('id', { count: 'exact', head: true })
-      .is('deleted_at', null)
+    // Filter issues and recommendations to only those belonging to this route's audits
+    let issueCount = 0
+    let recCount = 0
+    if (auditIds.length > 0) {
+      const [issueResult, recResult] = await Promise.all([
+        supabase
+          .from('issues')
+          .select('id', { count: 'exact', head: true })
+          .in('audit_id', auditIds)
+          .is('deleted_at', null),
+        supabase
+          .from('recommendations')
+          .select('id', { count: 'exact', head: true })
+          .in('audit_id', auditIds)
+          .is('deleted_at', null),
+      ])
+      issueCount = issueResult.count || 0
+      recCount = recResult.count || 0
+    }
 
     const analytics = {
       route: { id: route.id, name: route.name, county: route.county, townCity: route.town_city },
